@@ -55,6 +55,7 @@ build/
 .turbo/
 .cache/
 coverage/
+*.tsbuildinfo
 
 # --- Python ---
 __pycache__/
