@@ -1,10 +1,12 @@
 /**
- * Server Component 에서 현재 로그인한 사용자를 가져오는 헬퍼.
+ * Server Component 에서 사용하는 인증 헬퍼.
  *
- * 이 단계에서는 getUser() 만 만든다.
- * requireUser() 가드는 Phase 1 의 8단계에서 추가한다.
+ * - getUser()                : 로그인된 사용자 또는 null 반환. UI 분기용.
+ * - requireUser(redirectTo)  : 보호 페이지용 가드. 비로그인 시
+ *                              `/login?redirect=<redirectTo>` 로 강제 이동.
  */
 import type { User } from "@supabase/supabase-js";
+import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,4 +15,12 @@ export async function getUser(): Promise<User | null> {
   const { data, error } = await supabase.auth.getUser();
   if (error) return null;
   return data.user;
+}
+
+export async function requireUser(redirectTo: string): Promise<User> {
+  const user = await getUser();
+  if (!user) {
+    redirect(`/login?redirect=${encodeURIComponent(redirectTo)}`);
+  }
+  return user;
 }
