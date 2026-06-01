@@ -22,12 +22,13 @@
 
   --color-border: #e4e4e7;
   --color-input: #e4e4e7;
-  --color-ring: #18181b;
+  --color-ring: #0e7c8c;
 
-  /* ---------- Brand (메인 액션·로고·CTA) ---------- */
-  --color-primary: #18181b;
+/* ---------- Brand (메인 액션·로고·CTA) ---------- */
+  /* 함덕 딥블루 — 제주 바다 청록빛 파랑 */
+  --color-primary: #0e7c8c;
   --color-primary-foreground: #ffffff;
-  --color-primary-hover: #09090b;
+  --color-primary-hover: #0a6573;
 
   --color-secondary: #f4f4f5;
   --color-secondary-foreground: #18181b;
@@ -38,7 +39,7 @@
   --color-status-free: #16a34a;        /* 나눔 — green */
   --color-status-free-bg: #f0fdf4;
   --color-status-sold: #a1a1aa;        /* 거래완료 — gray */
-  --color-status-sell: #18181b;        /* 판매중 — primary 와 동일 */
+  --color-status-sell: #0e7c8c;        /* 판매중 — primary 와 동일 */
 
   --color-price-emphasis: #2563eb;     /* 가격 협의 강조 텍스트 */
 
