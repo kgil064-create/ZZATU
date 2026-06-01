@@ -1,11 +1,10 @@
 import { getUser } from "@/lib/auth";
+import { SignOutButton } from "@/components/sign-out-button";
 
 /**
  * 짜투(ZZATU) 사이트 공통 헤더.
  *
  * 로그인 상태에 따라 우측이 "로그인" 링크 또는 "닉네임 + 로그아웃" 으로 바뀐다.
- * 로그아웃 버튼은 자리만 잡아둔 상태이며, 진짜 Server Action 연결은
- * Phase 1 의 7단계에서 SignOutButton 컴포넌트로 교체한다.
  */
 export async function SiteHeader() {
   const user = await getUser();
@@ -33,13 +32,7 @@ export async function SiteHeader() {
               <span className="max-w-[120px] truncate text-sm text-foreground">
                 {nickname}
               </span>
-              {/* TODO: 7단계에서 SignOutButton 컴포넌트로 교체 (Server Action 연결) */}
-              <button
-                type="button"
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                로그아웃
-              </button>
+              <SignOutButton />
             </>
           ) : (
             <a
