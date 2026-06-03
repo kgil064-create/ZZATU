@@ -1,0 +1,86 @@
+/**
+ * 자재 등록 폼 검증 스키마.
+ *
+ * type(거래 종류) 에 따라 가격 필드 유무가 달라지므로 discriminatedUnion 으로 분기.
+ * 사진(item_images) 은 Server Action 에서 별도 처리하므로 이 스키마에 포함하지 않는다.
+ * 대신 type 별 사진 정책은 photoPolicy 로 export 한다.
+ */
+import { z } from "zod";
+
+const phoneSchema = z
+  .string()
+  .trim()
+  .regex(/^010-?\d{4}-?\d{4}$/, {
+    message: "010으로 시작하는 휴대폰 번호를 입력해주세요",
+  })
+  .transform((val) => val.replace(/-/g, ""));
+
+const baseShape = {
+  title: z
+    .string()
+    .trim()
+    .min(1, { message: "제목을 입력해주세요" })
+    .max(40, { message: "제목은 40자 이내로 입력해주세요" }),
+  description: z
+    .string()
+    .min(1, { message: "상세 설명을 입력해주세요" }),
+  region_id: z
+    .number({ message: "지역을 선택해주세요" })
+    .int({ message: "지역 ID가 올바르지 않아요" })
+    .min(1, { message: "지역을 선택해주세요" })
+    .max(32767, { message: "지역 ID 범위를 벗어났어요" }),
+  region_memo: z
+    .string()
+    .trim()
+    .max(100, { message: "지역 메모는 100자 이내로 입력해주세요" })
+    .optional()
+    .transform((val) => (val === "" ? undefined : val)),
+  category_ids: z
+    .array(z.number().int().positive())
+    .min(1, { message: "카테고리를 1개 이상 선택해주세요" }),
+  transport_options: z.array(z.string()),
+  contact_phone: phoneSchema,
+};
+
+const priceField = z
+  .number({ message: "가격을 입력해주세요" })
+  .int({ message: "가격은 정수로 입력해주세요" })
+  .positive({ message: "가격은 0보다 커야 해요" })
+  .max(100_000_000, { message: "가격은 1억원 이하로 입력해주세요" });
+
+const priceOptionField = z.enum(["fixed", "negotiable"], {
+  message: "가격 옵션을 선택해주세요",
+});
+
+const sellSchema = z.object({
+  type: z.literal("sell"),
+  ...baseShape,
+  price: priceField,
+  price_option: priceOptionField,
+});
+
+const requestSchema = z.object({
+  type: z.literal("request"),
+  ...baseShape,
+  price: priceField,
+  price_option: priceOptionField,
+});
+
+const freeSchema = z.object({
+  type: z.literal("free"),
+  ...baseShape,
+});
+
+export const itemSchema = z.discriminatedUnion("type", [
+  sellSchema,
+  requestSchema,
+  freeSchema,
+]);
+
+export type ItemInput = z.infer<typeof itemSchema>;
+
+export const photoPolicy = {
+  sell: { required: true, max: 10 },
+  free: { required: true, max: 10 },
+  request: { required: false, max: 10 },
+} as const;
