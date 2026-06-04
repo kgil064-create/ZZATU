@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { createClient } from "@/lib/supabase/server";
 import { itemSchema, type ItemInput } from "@/lib/validations/item";
 
@@ -133,4 +135,205 @@ export async function revealPhone(itemId: string): Promise<RevealPhoneResult> {
 
   if (error || !data?.contact_phone) return { error: "not_found" };
   return { phone: data.contact_phone as string };
+}
+
+export interface MutateItemResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * 거래완료 토글. (Phase 3 · 묶음 4)
+ *
+ * UI 숨김만 믿지 않고 서버에서 소유자를 재검증한다. is_sold 갱신 후 목록·상세를
+ * revalidate 해 배지/카드 dim 이 반영되게 한다.
+ */
+export async function setItemStatus(
+  itemId: string,
+  nextIsSold: boolean,
+): Promise<MutateItemResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "로그인이 필요합니다" };
+
+  const { data: item } = await supabase
+    .from("items")
+    .select("user_id")
+    .eq("id", itemId)
+    .maybeSingle();
+  if (!item) return { success: false, error: "자재를 찾을 수 없습니다" };
+  if ((item as { user_id: string }).user_id !== user.id) {
+    return { success: false, error: "권한이 없습니다" };
+  }
+
+  const { error } = await supabase
+    .from("items")
+    .update({ is_sold: nextIsSold })
+    .eq("id", itemId);
+  if (error) return { success: false, error: "상태 변경에 실패했습니다" };
+
+  revalidatePath("/");
+  revalidatePath(`/items/${itemId}`);
+  return { success: true };
+}
+
+/**
+ * 자재 삭제. (Phase 3 · 묶음 4)
+ *
+ * 순서: ① 사진 Storage 경로 수집 → ② items row 삭제(item_images·item_categories 는
+ * ON DELETE CASCADE 로 자동 정리) → ③ Storage 실제 파일 삭제(cascade 안 됨).
+ * 소유자는 서버에서 재검증한다.
+ */
+export async function deleteItem(itemId: string): Promise<MutateItemResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "로그인이 필요합니다" };
+
+  const { data: item } = await supabase
+    .from("items")
+    .select("user_id, item_images(url)")
+    .eq("id", itemId)
+    .maybeSingle();
+  if (!item) return { success: false, error: "자재를 찾을 수 없습니다" };
+
+  const owned = item as { user_id: string; item_images: { url: string }[] };
+  if (owned.user_id !== user.id) {
+    return { success: false, error: "권한이 없습니다" };
+  }
+
+  // full URL → 'item-images/' 뒤 경로 추출
+  const paths = (owned.item_images ?? [])
+    .map((img) => img.url.match(/item-images\/(.+)$/)?.[1])
+    .filter((p): p is string => Boolean(p));
+
+  const { error: delError } = await supabase
+    .from("items")
+    .delete()
+    .eq("id", itemId);
+  if (delError) return { success: false, error: "삭제에 실패했습니다" };
+
+  // Storage 파일은 DB cascade 로 안 지워지므로 별도 삭제(베스트 에포트).
+  if (paths.length > 0) {
+    await supabase.storage.from("item-images").remove(paths);
+  }
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+export type UpdateItemPayload = {
+  itemId: string;
+  data: ItemInput; // itemSchema 통과 데이터
+  photo_urls: string[]; // 최종 정렬된 사진 URL(기존 유지 + 신규 업로드), index = display_order
+};
+
+/**
+ * 자재 수정 Server Action. (Phase 3 · 묶음 5)
+ *
+ * 서버에서 소유자 재검증 후: ① items 필드 UPDATE → ② item_categories full-replace
+ * (조인 테이블이라 전체 교체가 안전) → ③ 사진 동기화. 사진은 unique(item_id, display_order)
+ * 충돌을 피하려고 행을 전부 지우고 최종 순서대로 0..n 으로 재삽입한다(유지된 사진의
+ * Storage 파일은 건드리지 않음 — 재업로드 X). 최종 리스트에서 빠진 기존 사진만 Storage 삭제.
+ */
+export async function updateItem(
+  payload: UpdateItemPayload,
+): Promise<MutateItemResult> {
+  const parsed = itemSchema.safeParse(payload.data);
+  if (!parsed.success) {
+    return { success: false, error: "입력값이 올바르지 않습니다" };
+  }
+  const data = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "로그인이 필요합니다" };
+
+  const { data: existing } = await supabase
+    .from("items")
+    .select("user_id, item_images(url)")
+    .eq("id", payload.itemId)
+    .maybeSingle();
+  if (!existing) return { success: false, error: "자재를 찾을 수 없습니다" };
+
+  const owned = existing as { user_id: string; item_images: { url: string }[] };
+  if (owned.user_id !== user.id) {
+    return { success: false, error: "권한이 없습니다" };
+  }
+
+  // ① items 필드 UPDATE (free 는 price null + price_option 'free')
+  const priceFields =
+    data.type === "free"
+      ? { price: null, price_option: "free" as const }
+      : { price: data.price, price_option: data.price_option };
+
+  const { error: upError } = await supabase
+    .from("items")
+    .update({
+      type: data.type,
+      title: data.title,
+      item_name: data.item_name,
+      spec: data.spec ?? null,
+      quantity: data.quantity ?? null,
+      unit: data.unit ?? null,
+      region_id: data.region_id,
+      region_memo: data.region_memo ?? null,
+      transport_options: data.transport_options,
+      description: data.description,
+      contact_phone: data.contact_phone,
+      ...priceFields,
+    })
+    .eq("id", payload.itemId);
+  if (upError) return { success: false, error: "수정에 실패했습니다" };
+
+  // ② item_categories full-replace
+  await supabase
+    .from("item_categories")
+    .delete()
+    .eq("item_id", payload.itemId);
+  const categoryRows = data.category_ids.map((category_id) => ({
+    item_id: payload.itemId,
+    category_id,
+  }));
+  const { error: catError } = await supabase
+    .from("item_categories")
+    .insert(categoryRows);
+  if (catError) return { success: false, error: "카테고리 저장에 실패했습니다" };
+
+  // ③ 사진 동기화
+  const currentUrls = (owned.item_images ?? []).map((img) => img.url);
+  const finalUrls = payload.photo_urls;
+  const removedUrls = currentUrls.filter((url) => !finalUrls.includes(url));
+
+  await supabase.from("item_images").delete().eq("item_id", payload.itemId);
+  if (finalUrls.length > 0) {
+    const imageRows = finalUrls.map((url, idx) => ({
+      item_id: payload.itemId,
+      url,
+      display_order: idx,
+    }));
+    const { error: imgError } = await supabase
+      .from("item_images")
+      .insert(imageRows);
+    if (imgError) return { success: false, error: "사진 저장에 실패했습니다" };
+  }
+
+  // 최종 리스트에서 빠진 기존 사진만 Storage 에서 삭제(베스트 에포트).
+  if (removedUrls.length > 0) {
+    const paths = removedUrls
+      .map((url) => url.match(/item-images\/(.+)$/)?.[1])
+      .filter((p): p is string => Boolean(p));
+    if (paths.length > 0) {
+      await supabase.storage.from("item-images").remove(paths);
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/items/${payload.itemId}`);
+  return { success: true };
 }

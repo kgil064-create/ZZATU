@@ -14,10 +14,12 @@ import {
   type TradeType,
 } from "@/lib/format";
 import { CallButton } from "./_components/call-button";
+import { OwnerControls } from "./_components/owner-controls";
 import { PhotoGallery } from "./_components/photo-gallery";
 
 interface DetailItem {
   id: string;
+  user_id: string;
   type: TradeType;
   title: string;
   price: number | null;
@@ -39,19 +41,23 @@ export default async function ItemDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [itemResult, transportResult] = await Promise.all([
+  const [itemResult, transportResult, userResult] = await Promise.all([
     supabase
       .from("items")
       .select(
-        "id, type, title, price, price_option, is_sold, created_at, description, transport_options, regions(eupmyeondong), item_images(url, display_order), item_categories(categories(name))",
+        "id, user_id, type, title, price, price_option, is_sold, created_at, description, transport_options, regions(eupmyeondong), item_images(url, display_order), item_categories(categories(name))",
       )
       .eq("id", id)
       .maybeSingle(),
     supabase.from("transport_options").select("code, name"),
+    supabase.auth.getUser(),
   ]);
 
   const item = itemResult.data as unknown as DetailItem | null;
   if (!item) notFound();
+
+  const user = userResult.data.user;
+  const isOwner = !!user && user.id === item.user_id;
 
   const images = [...item.item_images]
     .sort((a, b) => a.display_order - b.display_order)
@@ -132,9 +138,17 @@ export default async function ItemDetailPage({
         )}
       </div>
 
-      <div className="mt-8">
-        <CallButton itemId={item.id} isSold={item.is_sold} />
-      </div>
+      {isOwner && (
+        <div className="mt-6">
+          <OwnerControls itemId={item.id} isSold={item.is_sold} />
+        </div>
+      )}
+
+      {!isOwner && (
+        <div className="mt-8">
+          <CallButton itemId={item.id} isSold={item.is_sold} />
+        </div>
+      )}
     </main>
   );
 }
