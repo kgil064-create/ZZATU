@@ -38,3 +38,18 @@ export async function uploadItemPhoto(
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
   return data.publicUrl;
 }
+
+/**
+ * public URL 로부터 Storage 파일을 삭제한다. (DB 저장 실패 시 고아 파일 정리용)
+ *
+ * publicUrl 예:
+ *   https://xxx.supabase.co/storage/v1/object/public/item-images/userId/123-abc.jpg
+ *   → 추출 경로: userId/123-abc.jpg
+ * 경로를 못 뽑으면 조용히 무시한다(정리 실패가 본 흐름을 막지 않도록).
+ */
+export async function deleteStoragePhoto(publicUrl: string): Promise<void> {
+  const supabase = createClient();
+  const match = publicUrl.match(/item-images\/(.+)$/);
+  if (!match) return;
+  await supabase.storage.from(BUCKET).remove([match[1]]);
+}

@@ -12,7 +12,11 @@
  */
 
 import { useState, type SyntheticEvent } from "react";
+import { useRouter } from "next/navigation";
 
+import { createClient } from "@/lib/supabase/client";
+import { uploadItemPhoto, deleteStoragePhoto } from "@/lib/storage";
+import { createItem } from "@/app/actions/items";
 import { itemSchema } from "@/lib/validations/item";
 import { CategoryPicker, type Category } from "./_components/category-picker";
 import {
@@ -96,7 +100,12 @@ export function NewItemForm({
 
   // 검증/제출
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<
+    "idle" | "uploading" | "saving"
+  >("idle");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const router = useRouter();
 
   const showPrice = type !== "free"; // 나눔은 가격 개념 없음
   const photoRequired = type !== "request"; // 구해요만 사진 선택
@@ -117,6 +126,7 @@ export function NewItemForm({
 
   async function validateAndSubmit(e: SyntheticEvent) {
     e.preventDefault();
+    setSubmitError(null);
 
     const input = {
       type,
@@ -137,6 +147,7 @@ export function NewItemForm({
       }),
     };
 
+    // 1. 클라이언트 검증
     const result = itemSchema.safeParse(input);
     const nextErrors: Record<string, string> = {};
     if (!result.success) {
@@ -152,13 +163,48 @@ export function NewItemForm({
     }
 
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (!result.success || Object.keys(nextErrors).length > 0) return;
 
-    setSubmitting(true);
-    // 7~8단계에서 Storage 업로드 + DB 저장 + 페이지 이동으로 교체한다.
-    console.log({ ...input, photos: photos.map((p) => p.file.name) });
-    await new Promise((r) => setTimeout(r, 1000));
-    setSubmitting(false);
+    try {
+      // 2. 사용자 ID
+      setSubmitPhase("uploading");
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("로그인이 필요합니다");
+
+      // 3. 사진 병렬 업로드
+      let photoUrls: string[] = [];
+      if (photos.length > 0) {
+        photoUrls = await Promise.all(
+          photos.map((p) => uploadItemPhoto(p.file, user.id)),
+        );
+      }
+
+      // 4. Server Action 호출 (서버에서 재검증 + DB INSERT)
+      setSubmitPhase("saving");
+      const res = await createItem({ ...result.data, photo_urls: photoUrls });
+
+      if (!res.success) {
+        // DB 저장 실패 → 방금 올린 사진들 정리(고아 파일 방지)
+        if (photoUrls.length > 0) {
+          await Promise.allSettled(
+            photoUrls.map((url) => deleteStoragePhoto(url)),
+          );
+        }
+        throw new Error(res.error || "등록에 실패했습니다");
+      }
+
+      // 5. 성공 → previewUrl 회수 후 상세 페이지로 이동
+      photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      router.push(`/items/${res.itemId}`);
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다",
+      );
+      setSubmitPhase("idle");
+    }
   }
 
   return (
@@ -415,13 +461,24 @@ export function NewItemForm({
       </section>
 
       {/* 11. 등록 버튼 */}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-base bg-primary py-3 text-base font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {submitting ? "등록 중..." : "등록"}
-      </button>
+      <div>
+        <button
+          type="submit"
+          disabled={submitPhase !== "idle"}
+          className="w-full rounded-base bg-primary py-3 text-base font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {submitPhase === "uploading"
+            ? "사진 업로드 중..."
+            : submitPhase === "saving"
+              ? "등록 중..."
+              : "등록"}
+        </button>
+        {submitError && (
+          <p className="mt-2 text-center text-sm text-destructive">
+            {submitError}
+          </p>
+        )}
+      </div>
     </form>
   );
 }
