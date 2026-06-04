@@ -14,6 +14,7 @@ import {
   type TradeType,
 } from "@/lib/format";
 import { CallButton } from "./_components/call-button";
+import { ChatButton } from "./_components/chat-button";
 import { OwnerControls } from "./_components/owner-controls";
 import { PhotoGallery } from "./_components/photo-gallery";
 import { RecordView } from "./_components/record-view";
@@ -149,8 +150,15 @@ export default async function ItemDetailPage({
       )}
 
       {!isOwner && (
-        <div className="mt-8">
-          <CallButton itemId={item.id} isSold={item.is_sold} />
+        <div className="mt-8 flex gap-2">
+          {user && (
+            <div className="flex-1">
+              <ChatButton itemId={item.id} />
+            </div>
+          )}
+          <div className="flex-1">
+            <CallButton itemId={item.id} isSold={item.is_sold} />
+          </div>
         </div>
       )}
     </main>
