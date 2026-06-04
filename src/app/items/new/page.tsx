@@ -20,6 +20,7 @@ export default async function NewItemPage() {
     supabase
       .from("regions")
       .select("id, si, eupmyeondong, display_order")
+      .lt("display_order", 100)
       .order("display_order"),
     supabase
       .from("transport_options")
