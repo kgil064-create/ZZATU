@@ -58,7 +58,7 @@ export default async function ChatRoomPage({
         myId={user.id}
         initialMessages={initialMessages}
       />
-      <MessageInput roomId={roomId} />
+      <MessageInput roomId={roomId} userId={user.id} />
     </main>
   );
 }

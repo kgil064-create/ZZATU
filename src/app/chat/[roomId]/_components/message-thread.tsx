@@ -29,6 +29,8 @@ export function MessageThread({
   initialMessages: ChatMessage[];
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const requestedRef = useRef<Set<string>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,9 +75,38 @@ export function MessageThread({
     };
   }, [roomId]);
 
+  // 이미지 메시지: chat-images(Private)는 public URL 이 안 되므로 signed URL 을 만든다.
+  // 이미 요청한 경로는 ref 로 추적해 중복 요청을 막는다.
+  useEffect(() => {
+    const paths = messages
+      .map((m) => m.image_url)
+      .filter((p): p is string => !!p && !requestedRef.current.has(p));
+    if (paths.length === 0) return;
+    paths.forEach((p) => requestedRef.current.add(p));
+
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase.storage
+        .from("chat-images")
+        .createSignedUrls(paths, 3600);
+      if (cancelled || !data) return;
+      const entries = data
+        .filter((d) => d.signedUrl && d.path)
+        .map((d) => [d.path as string, d.signedUrl] as [string, string]);
+      if (entries.length > 0) {
+        setSignedUrls((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, signedUrls]);
 
   return (
     <div className="flex-1 space-y-2 overflow-y-auto py-2">
@@ -99,8 +130,26 @@ export function MessageThread({
                     : "bg-muted text-foreground")
                 }
               >
+                {m.image_url &&
+                  (signedUrls[m.image_url] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={signedUrls[m.image_url]}
+                      alt=""
+                      className="max-h-60 rounded-base object-cover"
+                    />
+                  ) : (
+                    <div className="h-40 w-40 animate-pulse rounded-base bg-black/10" />
+                  ))}
                 {m.content && (
-                  <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                  <p
+                    className={
+                      "whitespace-pre-wrap break-words" +
+                      (m.image_url ? " mt-1" : "")
+                    }
+                  >
+                    {m.content}
+                  </p>
                 )}
               </div>
             </div>

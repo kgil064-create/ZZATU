@@ -72,17 +72,21 @@ export interface SendMessageResult {
 }
 
 /**
- * 텍스트 메시지 전송. (Phase 5 · 5-A — 사진은 5-B)
+ * 메시지 전송(텍스트 + 사진). (Phase 5 · 5-A 텍스트 / 5-B 사진)
  *
  * 참여자 확인은 chat_rooms select RLS(참여자만 조회)로 처리한다(없으면 권한 없음).
- * 메시지 insert 후 방의 last_message_at 을 갱신해 목록 정렬에 쓴다.
+ * imagePath 는 클라이언트가 chat-images 에 업로드한 경로(object key). 텍스트/사진 둘 중
+ * 하나만 있어도 전송 가능(chat_messages 의 content/image_url 체크 제약 충족).
  */
 export async function sendMessage(
   roomId: string,
   content: string,
+  imagePath?: string,
 ): Promise<SendMessageResult> {
   const text = content.trim();
-  if (!text) return { success: false, error: "메시지를 입력해주세요" };
+  if (!text && !imagePath) {
+    return { success: false, error: "메시지를 입력해주세요" };
+  }
 
   const supabase = await createClient();
   const {
@@ -98,9 +102,12 @@ export async function sendMessage(
     .maybeSingle();
   if (!room) return { success: false, error: "권한이 없습니다" };
 
-  const { error: messageError } = await supabase
-    .from("chat_messages")
-    .insert({ room_id: roomId, sender_id: user.id, content: text });
+  const { error: messageError } = await supabase.from("chat_messages").insert({
+    room_id: roomId,
+    sender_id: user.id,
+    content: text || null,
+    image_url: imagePath ?? null,
+  });
   if (messageError) return { success: false, error: "전송에 실패했어요" };
 
   await supabase
