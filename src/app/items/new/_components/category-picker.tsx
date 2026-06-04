@@ -12,6 +12,7 @@ interface CategoryPickerProps {
   value: number[]; // 선택된 category id 배열
   onChange: (next: number[]) => void;
   maxSelections?: number; // 기본 3
+  error?: string; // 외부 검증 에러 메시지 (옵션)
 }
 
 /**
@@ -25,6 +26,7 @@ export function CategoryPicker({
   value,
   onChange,
   maxSelections = 3,
+  error,
 }: CategoryPickerProps) {
   const reachedMax = value.length >= maxSelections;
 
@@ -97,6 +99,8 @@ export function CategoryPicker({
           );
         })}
       </div>
+
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
     </div>
   );
 }

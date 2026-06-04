@@ -13,6 +13,7 @@ interface RegionPickerProps {
   onRegionChange: (next: number | null) => void;
   regionMemo: string;
   onRegionMemoChange: (next: string) => void;
+  error?: string; // 외부 검증 에러 메시지 (옵션)
 }
 
 /**
@@ -27,6 +28,7 @@ export function RegionPicker({
   onRegionChange,
   regionMemo,
   onRegionMemoChange,
+  error,
 }: RegionPickerProps) {
   const options = [...regions].sort(
     (a, b) => a.display_order - b.display_order,
@@ -80,6 +82,8 @@ export function RegionPicker({
           );
         })}
       </div>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div>
         <label
