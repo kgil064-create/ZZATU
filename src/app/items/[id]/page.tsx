@@ -16,6 +16,7 @@ import {
 import { CallButton } from "./_components/call-button";
 import { OwnerControls } from "./_components/owner-controls";
 import { PhotoGallery } from "./_components/photo-gallery";
+import { RecordView } from "./_components/record-view";
 
 interface DetailItem {
   id: string;
@@ -80,6 +81,9 @@ export default async function ItemDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-screen-md px-4 py-4">
+      {/* 로그인 유저면 최근 본 글 기록(본인 글 포함). UI 없음. */}
+      {user && <RecordView itemId={item.id} />}
+
       {images.length > 0 && <PhotoGallery images={images} />}
 
       <div className="mt-4">

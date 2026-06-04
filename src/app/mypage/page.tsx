@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MyItems } from "./_components/my-items";
 import { ProfileSection } from "./_components/profile-section";
+import { RecentViews } from "./_components/recent-views";
 
 export default async function MyPage() {
   const user = await requireUser("/mypage");
@@ -29,6 +30,13 @@ export default async function MyPage() {
           내가 올린 글
         </h2>
         <MyItems userId={user.id} />
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">
+          최근 본 글
+        </h2>
+        <RecentViews userId={user.id} />
       </section>
     </main>
   );
