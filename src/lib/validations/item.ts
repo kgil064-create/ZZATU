@@ -21,6 +21,36 @@ const baseShape = {
     .trim()
     .min(1, { message: "제목을 입력해주세요" })
     .max(40, { message: "제목은 40자 이내로 입력해주세요" }),
+  item_name: z
+    .string()
+    .trim()
+    .min(1, { message: "자재 명칭을 입력해주세요" })
+    .max(30, { message: "명칭은 30자 이내로 입력해주세요" }),
+  spec: z
+    .string()
+    .trim()
+    .max(30, { message: "규격은 30자 이내로 입력해주세요" })
+    .optional()
+    .transform((val) => (val === "" ? undefined : val)),
+  quantity: z
+    .preprocess(
+      (val) => {
+        if (val === "" || val === undefined || val === null) return undefined;
+        const num = typeof val === "string" ? Number(val) : val;
+        return Number.isNaN(num) ? undefined : num;
+      },
+      z
+        .number({ message: "수량은 숫자로 입력해주세요" })
+        .int({ message: "수량은 정수로 입력해주세요" })
+        .min(1, { message: "수량은 1 이상으로 입력해주세요" })
+        .optional(),
+    ),
+  unit: z
+    .string()
+    .trim()
+    .max(10, { message: "단위는 10자 이내로 입력해주세요" })
+    .optional()
+    .transform((val) => (val === "" ? undefined : val)),
   description: z
     .string()
     .min(1, { message: "상세 설명을 입력해주세요" }),
