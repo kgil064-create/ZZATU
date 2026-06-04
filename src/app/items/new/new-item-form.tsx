@@ -3,6 +3,10 @@
 import { useState } from "react";
 
 import { CategoryPicker, type Category } from "./_components/category-picker";
+import {
+  PhotoUploader,
+  type PhotoFile,
+} from "./_components/photo-uploader";
 import { RegionPicker, type Region } from "./_components/region-picker";
 import {
   TransportPicker,
@@ -30,6 +34,7 @@ export function NewItemForm({
   regions,
   transportOptions,
 }: NewItemFormProps) {
+  const [photos, setPhotos] = useState<PhotoFile[]>([]);
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [regionId, setRegionId] = useState<number | null>(null);
   const [regionMemo, setRegionMemo] = useState("");
@@ -37,6 +42,16 @@ export function NewItemForm({
 
   return (
     <div className="space-y-8">
+      <section>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">사진</h2>
+        <PhotoUploader
+          value={photos}
+          onChange={setPhotos}
+          maxPhotos={10}
+          required={false}
+        />
+      </section>
+
       <section>
         <h2 className="mb-3 text-lg font-semibold text-foreground">카테고리</h2>
         <CategoryPicker
