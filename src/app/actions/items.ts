@@ -106,3 +106,31 @@ export async function createItem(
 
   return { success: true, itemId: newItemId };
 }
+
+export interface RevealPhoneResult {
+  phone?: string;
+  error?: string;
+}
+
+/**
+ * 자재 연락처 공개 Server Action. (Phase 3 · 결정 #1)
+ *
+ * 전화번호는 상세 페이지 HTML 에 절대 포함하지 않고, "전화하기" 클릭 시에만 이 액션으로
+ * 받아 tel: 로 연결한다. 비로그인 호출은 거부해 스크립트의 대량 번호 수집을 막는다.
+ */
+export async function revealPhone(itemId: string): Promise<RevealPhoneResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "unauthenticated" };
+
+  const { data, error } = await supabase
+    .from("items")
+    .select("contact_phone")
+    .eq("id", itemId)
+    .maybeSingle();
+
+  if (error || !data?.contact_phone) return { error: "not_found" };
+  return { phone: data.contact_phone as string };
+}
