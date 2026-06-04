@@ -1,7 +1,35 @@
-// Phase 2 임시 placeholder. 실제 상세 페이지는 추후 Phase에서 구현.
+// 자재 상세 페이지. (Phase 3 · Server Component)
 //
-// Next 16 동적 라우트 규약: params 는 Promise 이므로 await 후 사용한다.
-// (node_modules/next/dist/docs/.../dynamic-routes.md 확인)
+// 보안: contact_phone 은 이 쿼리에서 선택하지 않는다(초기 HTML 비노출, 결정 #1).
+// 전화번호는 CallButton 의 revealPhone 액션에서만 받아 tel: 로 연결한다.
+
+import { notFound } from "next/navigation";
+
+import { StatusBadge } from "@/components/status-badge";
+import { createClient } from "@/lib/supabase/server";
+import {
+  formatPrice,
+  formatRelativeTime,
+  type PriceOption,
+  type TradeType,
+} from "@/lib/format";
+import { CallButton } from "./_components/call-button";
+import { PhotoGallery } from "./_components/photo-gallery";
+
+interface DetailItem {
+  id: string;
+  type: TradeType;
+  title: string;
+  price: number | null;
+  price_option: PriceOption;
+  is_sold: boolean;
+  created_at: string;
+  description: string | null;
+  transport_options: string[];
+  regions: { eupmyeondong: string } | null;
+  item_images: { url: string; display_order: number }[];
+  item_categories: { categories: { name: string } | null }[];
+}
 
 export default async function ItemDetailPage({
   params,
@@ -9,23 +37,104 @@ export default async function ItemDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const supabase = await createClient();
+
+  const [itemResult, transportResult] = await Promise.all([
+    supabase
+      .from("items")
+      .select(
+        "id, type, title, price, price_option, is_sold, created_at, description, transport_options, regions(eupmyeondong), item_images(url, display_order), item_categories(categories(name))",
+      )
+      .eq("id", id)
+      .maybeSingle(),
+    supabase.from("transport_options").select("code, name"),
+  ]);
+
+  const item = itemResult.data as unknown as DetailItem | null;
+  if (!item) notFound();
+
+  const images = [...item.item_images]
+    .sort((a, b) => a.display_order - b.display_order)
+    .map((img) => img.url);
+
+  const categories = item.item_categories
+    .map((ic) => ic.categories?.name)
+    .filter((name): name is string => Boolean(name));
+
+  const transportNameByCode = new Map(
+    ((transportResult.data ?? []) as { code: string; name: string }[]).map(
+      (t) => [t.code, t.name],
+    ),
+  );
+  const transportLabels = (item.transport_options ?? []).map(
+    (code) => transportNameByCode.get(code) ?? code,
+  );
+
+  const region = item.regions?.eupmyeondong ?? "";
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-bold">자재 상세 페이지</h1>
-      <div className="mt-4 rounded-base bg-muted p-4">
-        <p className="text-sm text-muted-foreground">자재 ID</p>
-        <p className="mt-1 font-mono">{id}</p>
+    <main className="mx-auto w-full max-w-screen-md px-4 py-4">
+      {images.length > 0 && <PhotoGallery images={images} />}
+
+      <div className="mt-4">
+        <StatusBadge type={item.type} isSold={item.is_sold} />
+        <h1 className="mt-2 text-xl font-bold tracking-tight text-foreground">
+          {item.title}
+        </h1>
+        <p className="mt-2 text-lg font-semibold text-foreground">
+          {formatPrice(item)}
+        </p>
+        <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+          {region && (
+            <>
+              <span>{region}</span>
+              <span aria-hidden="true">·</span>
+            </>
+          )}
+          <span>{formatRelativeTime(item.created_at)}</span>
+        </div>
       </div>
-      <p className="mt-6 text-muted-foreground">
-        상세 페이지는 추후 Phase에서 구현됩니다.
-      </p>
-      <a
-        href="/items/new"
-        className="mt-4 inline-block text-primary hover:underline"
-      >
-        ← 자재 등록 페이지로 돌아가기
-      </a>
-    </div>
+
+      {categories.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {categories.map((name) => (
+            <span
+              key={name}
+              className="rounded-full border border-border bg-muted px-3 py-1 text-sm text-muted-foreground"
+            >
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {item.description && (
+        <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+          {item.description}
+        </p>
+      )}
+
+      <div className="mt-6">
+        <h2 className="mb-2 text-sm font-medium text-foreground">운반 옵션</h2>
+        {transportLabels.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {transportLabels.map((label) => (
+              <span
+                key={label}
+                className="rounded-full border border-border bg-card px-3 py-1 text-sm text-card-foreground"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">운반 협의</p>
+        )}
+      </div>
+
+      <div className="mt-8">
+        <CallButton itemId={item.id} isSold={item.is_sold} />
+      </div>
+    </main>
   );
 }
