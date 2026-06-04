@@ -2,15 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export interface PhotoFile {
-  id: string; // crypto.randomUUID() — React key + 순서 변경 추적용
-  file: File; // 실제 File 객체 (Storage 업로드 시 사용)
-  previewUrl: string; // URL.createObjectURL(file) — 미리보기용
+/** 이미 업로드된 원격 사진(수정 시 prefill). 삭제 전까지 Storage 파일은 건드리지 않는다. */
+export interface ExistingPhoto {
+  kind: "existing";
+  id: string; // React key (수정 추적용) — 보통 item_images.id 또는 url 기반
+  url: string; // 원격 public URL
 }
 
+/** 새로 고른 로컬 사진. 제출 시 Storage 업로드 대상. */
+export interface NewPhoto {
+  kind: "new";
+  id: string; // crypto.randomUUID()
+  file: File;
+  previewUrl: string; // URL.createObjectURL(file)
+}
+
+export type GalleryPhoto = ExistingPhoto | NewPhoto;
+
 interface PhotoUploaderProps {
-  value: PhotoFile[];
-  onChange: (next: PhotoFile[]) => void;
+  value: GalleryPhoto[];
+  onChange: (next: GalleryPhoto[]) => void;
   maxPhotos?: number; // 기본 10
   required?: boolean; // type=request 일 땐 false, 그 외엔 true
   error?: string; // 외부에서 에러 메시지 주입 (옵션)
@@ -18,11 +29,16 @@ interface PhotoUploaderProps {
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
 
+function previewSrc(photo: GalleryPhoto): string {
+  return photo.kind === "existing" ? photo.url : photo.previewUrl;
+}
+
 /**
- * 사진 업로더. (Phase 2 · 5단계)
+ * 사진 업로더 — 혼합 모델. (Phase 2 · 5단계 / Phase 3 · 묶음 5 확장)
  *
- * 다중 선택 → 검증(이미지 MIME + 5MB 이하) → 미리보기 그리드 → 순서 변경/제거.
- * previewUrl 은 createObjectURL 로 만들므로 제거·unmount 시 revoke 로 누수를 막는다.
+ * 기존 원격 사진(existing) + 신규 로컬 사진(new)을 하나의 정렬 리스트로 관리한다.
+ * 둘 다 삭제·순서변경 가능, 신규 추가 가능. 신규(new)의 objectURL 만 revoke 한다.
+ * 초기값(existing) 없이 쓰면 등록(create)과 동일하게 신규 사진만 다룬다(하위호환).
  */
 export function PhotoUploader({
   value,
@@ -35,12 +51,14 @@ export function PhotoUploader({
   // 선택 시점 거부/잘림 사유. 다음 선택 시 사라진다.
   const [notices, setNotices] = useState<string[]>([]);
 
-  // unmount 시 남아 있는 모든 objectURL 회수. value 가 계속 바뀌므로 ref 로 최신값 추적.
+  // unmount 시 남아 있는 신규 사진의 objectURL 회수. value 가 바뀌므로 ref 로 최신값 추적.
   const valueRef = useRef(value);
   valueRef.current = value;
   useEffect(() => {
     return () => {
-      valueRef.current.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      valueRef.current.forEach((p) => {
+        if (p.kind === "new") URL.revokeObjectURL(p.previewUrl);
+      });
     };
   }, []);
 
@@ -53,7 +71,7 @@ export function PhotoUploader({
 
     const picked = Array.from(fileList);
     const messages: string[] = [];
-    const accepted: PhotoFile[] = [];
+    const accepted: NewPhoto[] = [];
 
     for (const file of picked) {
       if (!file.type.startsWith("image/")) {
@@ -65,6 +83,7 @@ export function PhotoUploader({
         continue;
       }
       accepted.push({
+        kind: "new",
         id: crypto.randomUUID(),
         file,
         previewUrl: URL.createObjectURL(file),
@@ -92,7 +111,8 @@ export function PhotoUploader({
 
   function removeAt(index: number) {
     const target = value[index];
-    if (target) URL.revokeObjectURL(target.previewUrl);
+    // 신규 사진만 objectURL 회수. 기존(existing) 은 제거 후 diff 단계에서 정리.
+    if (target?.kind === "new") URL.revokeObjectURL(target.previewUrl);
     onChange(value.filter((_, i) => i !== index));
   }
 
@@ -149,7 +169,7 @@ export function PhotoUploader({
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={photo.previewUrl}
+                src={previewSrc(photo)}
                 alt=""
                 className="h-full w-full rounded-base object-cover"
               />
