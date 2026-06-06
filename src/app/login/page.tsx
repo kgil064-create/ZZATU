@@ -40,6 +40,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <div className="mt-8">
           <LoginButton redirect={safeRedirect} />
         </div>
+        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+          로그인 시{" "}
+          <a href="/terms" className="underline hover:text-foreground">
+            이용약관
+          </a>{" "}
+          및{" "}
+          <a href="/privacy" className="underline hover:text-foreground">
+            개인정보처리방침
+          </a>
+          에 동의한 것으로 봅니다.
+        </p>
       </div>
     </main>
   );
