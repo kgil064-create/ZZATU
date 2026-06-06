@@ -1,18 +1,11 @@
-"use client";
-
-import { usePathname } from "next/navigation";
-
 /**
  * 우측 하단 플로팅 자재 등록 버튼(FAB).
  *
- * 등록 페이지(/items/new)에서는 숨긴다(이미 그 화면에 있으므로). 비로그인 사용자도
- * 그대로 이동시키고, 등록 페이지의 requireUser 가드가 인증을 처리한다.
- * lucide-react 미설치라 + 아이콘은 인라인 SVG 로 둔다(의존성 추가 보류).
+ * 메인 목록(/)에서만 노출한다 — 홈 페이지(app/page.tsx)에서만 렌더되므로 별도 경로 분기가
+ * 필요 없다(검색 결과 /?q=... 도 pathname 이 / 라 그대로 노출). 비로그인도 그대로 이동시키고,
+ * /items/new 의 requireUser 가 인증을 처리한다. lucide-react 미설치라 + 아이콘은 인라인 SVG.
  */
 export function FloatingCreateButton() {
-  const pathname = usePathname();
-  if (pathname === "/items/new") return null;
-
   return (
     <a
       href="/items/new"

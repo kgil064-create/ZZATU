@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import type { TradeType } from "@/lib/format";
+import { FloatingCreateButton } from "@/components/floating-create-button";
 import { FilterPanel } from "./_components/filter-panel";
 import { ItemList } from "./_components/item-list";
 import { SearchBar } from "./_components/search-bar";
@@ -66,6 +67,9 @@ export default async function Home({
       <div className="mt-4">
         <ItemList type={type} q={q} category={category} region={region} />
       </div>
+
+      {/* 메인 목록에서만 노출되는 자재 등록 FAB */}
+      <FloatingCreateButton />
     </main>
   );
 }
