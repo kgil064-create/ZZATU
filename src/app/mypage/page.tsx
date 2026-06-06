@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MyItems } from "./_components/my-items";
 import { ProfileSection } from "./_components/profile-section";
 import { RecentViews } from "./_components/recent-views";
+import { WithdrawButton } from "./_components/withdraw-button";
 
 export default async function MyPage() {
   const user = await requireUser("/mypage");
@@ -38,6 +39,8 @@ export default async function MyPage() {
         </h2>
         <RecentViews userId={user.id} />
       </section>
+
+      <WithdrawButton />
     </main>
   );
 }
