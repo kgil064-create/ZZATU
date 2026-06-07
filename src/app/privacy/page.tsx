@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "개인정보처리방침 · 짜투(ZZATU)",
+  title: "개인정보처리방침",
   description: "짜투(ZZATU) 개인정보처리방침",
 };
 

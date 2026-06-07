@@ -4,8 +4,22 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
 export const metadata: Metadata = {
-  title: "짜투(ZZATU) · 제주 잉여자재 마켓",
-  description: "제주 지역의 건축자재를 사고팔고 나누는 중고 거래 플랫폼",
+  metadataBase: new URL("https://zzatu.vercel.app"),
+  title: {
+    default: "짜투(ZZATU) — 제주 건축자재 중고거래",
+    template: "%s | 짜투",
+  },
+  description:
+    "제주 지역 건축자재를 사고, 팔고, 나누고, 구하는 중고거래 플랫폼. 자재의 가치를 잇다.",
+  openGraph: {
+    title: "짜투(ZZATU) — 제주 건축자재 중고거래",
+    description:
+      "제주 지역 건축자재를 사고, 팔고, 나누고, 구하는 중고거래 플랫폼. 자재의 가치를 잇다.",
+    url: "https://zzatu.vercel.app",
+    siteName: "짜투",
+    locale: "ko_KR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
