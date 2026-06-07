@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
+import { getFavoriteContext } from "@/lib/favorites";
 import type { TradeType } from "@/lib/format";
 import { ItemCard, type ItemCardData } from "./item-card";
 
@@ -83,7 +84,7 @@ export async function ItemList({
   let query = supabase
     .from("items")
     .select(
-      "id, type, title, price, price_option, is_sold, created_at, regions(eupmyeondong), item_images(url, display_order)",
+      "id, user_id, type, title, price, price_option, is_sold, created_at, regions(eupmyeondong), item_images(url, display_order)",
     )
     .order("is_sold", { ascending: true })
     .order("created_at", { ascending: false });
@@ -100,11 +101,18 @@ export async function ItemList({
 
   if (error || items.length === 0) return <EmptyState filtering={filtering} />;
 
+  const { userId, favoriteItemIds } = await getFavoriteContext();
+  const favSet = new Set(favoriteItemIds);
+
   return (
     <ul className="space-y-3">
       {items.map((item) => (
         <li key={item.id}>
-          <ItemCard item={item} />
+          <ItemCard
+            item={item}
+            currentUserId={userId}
+            favorited={favSet.has(item.id)}
+          />
         </li>
       ))}
     </ul>

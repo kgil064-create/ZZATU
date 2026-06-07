@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getFavoriteContext } from "@/lib/favorites";
 import { ItemCard, type ItemCardData } from "@/app/_components/item-card";
 
 /**
@@ -13,7 +14,7 @@ export async function RecentViews({ userId }: { userId: string }) {
   const { data, error } = await supabase
     .from("item_views")
     .select(
-      "viewed_at, items(id, type, title, price, price_option, is_sold, created_at, regions(eupmyeondong), item_images(url, display_order))",
+      "viewed_at, items(id, user_id, type, title, price, price_option, is_sold, created_at, regions(eupmyeondong), item_images(url, display_order))",
     )
     .eq("user_id", userId)
     .order("viewed_at", { ascending: false })
@@ -31,11 +32,18 @@ export async function RecentViews({ userId }: { userId: string }) {
     );
   }
 
+  const { favoriteItemIds } = await getFavoriteContext();
+  const favSet = new Set(favoriteItemIds);
+
   return (
     <ul className="space-y-3">
       {items.map((item) => (
         <li key={item.id}>
-          <ItemCard item={item} />
+          <ItemCard
+            item={item}
+            currentUserId={userId}
+            favorited={favSet.has(item.id)}
+          />
         </li>
       ))}
     </ul>

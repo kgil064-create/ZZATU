@@ -12,7 +12,7 @@ export async function MyItems({ userId }: { userId: string }) {
   const { data, error } = await supabase
     .from("items")
     .select(
-      "id, type, title, price, price_option, is_sold, created_at, regions(eupmyeondong), item_images(url, display_order)",
+      "id, user_id, type, title, price, price_option, is_sold, created_at, regions(eupmyeondong), item_images(url, display_order)",
     )
     .eq("user_id", userId)
     .order("is_sold", { ascending: true })
@@ -32,7 +32,8 @@ export async function MyItems({ userId }: { userId: string }) {
     <ul className="space-y-3">
       {items.map((item) => (
         <li key={item.id}>
-          <ItemCard item={item} />
+          {/* 본인 글이라 하트는 자동 숨김(currentUserId === item.user_id) */}
+          <ItemCard item={item} currentUserId={userId} />
         </li>
       ))}
     </ul>

@@ -6,6 +6,7 @@
 import { notFound } from "next/navigation";
 
 import { StatusBadge } from "@/components/status-badge";
+import { FavoriteButton } from "@/components/favorite-button";
 import { createClient } from "@/lib/supabase/server";
 import {
   formatPrice,
@@ -61,6 +62,19 @@ export default async function ItemDetailPage({
   const user = userResult.data.user;
   const isOwner = !!user && user.id === item.user_id;
 
+  // 찜 여부(로그인 시) + 하트 노출 여부(비로그인 또는 남의 글)
+  let favorited = false;
+  if (user) {
+    const { data: fav } = await supabase
+      .from("favorites")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("item_id", item.id)
+      .maybeSingle();
+    favorited = !!fav;
+  }
+  const showFavorite = !user || !isOwner;
+
   const images = [...item.item_images]
     .sort((a, b) => a.display_order - b.display_order)
     .map((img) => img.url);
@@ -88,7 +102,16 @@ export default async function ItemDetailPage({
       {images.length > 0 && <PhotoGallery images={images} />}
 
       <div className="mt-4">
-        <StatusBadge type={item.type} isSold={item.is_sold} />
+        <div className="flex items-start justify-between gap-2">
+          <StatusBadge type={item.type} isSold={item.is_sold} />
+          {showFavorite && (
+            <FavoriteButton
+              itemId={item.id}
+              initialFavorited={favorited}
+              variant="detail"
+            />
+          )}
+        </div>
         <h1 className="mt-2 text-xl font-bold tracking-tight text-foreground">
           {item.title}
         </h1>
