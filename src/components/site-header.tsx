@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { getProfile } from "@/lib/auth";
 import { SignOutButton } from "@/components/sign-out-button";
 
@@ -14,21 +16,21 @@ export async function SiteHeader() {
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-14 max-w-screen-md items-center justify-between px-4">
-        <a href="/" className="flex items-baseline gap-2">
+        <Link href="/" className="flex items-baseline gap-2">
           <span className="text-xl font-bold tracking-tight text-primary">
             ZZATU
           </span>
           <span className="hidden text-xs text-muted-foreground sm:inline">
             자재의 가치를 잇다
           </span>
-        </a>
+        </Link>
         <nav className="flex items-center gap-3">
           {profile ? (
             <>
               <span className="max-w-[120px] truncate text-sm text-foreground">
                 {profile.nickname}
               </span>
-              <a
+              <Link
                 href="/mypage"
                 aria-label="마이페이지"
                 title="마이페이지"
@@ -48,16 +50,16 @@ export async function SiteHeader() {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
-              </a>
+              </Link>
               <SignOutButton />
             </>
           ) : (
-            <a
+            <Link
               href="/login"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               로그인
-            </a>
+            </Link>
           )}
         </nav>
       </div>

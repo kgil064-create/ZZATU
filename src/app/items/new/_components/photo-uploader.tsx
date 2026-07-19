@@ -55,7 +55,12 @@ export function PhotoUploader({
 
   // unmount 시 남아 있는 신규 사진의 objectURL 회수. value 가 바뀌므로 ref 로 최신값 추적.
   const valueRef = useRef(value);
-  valueRef.current = value;
+  // 렌더 중 ref 를 직접 수정하지 않고 effect 로 반영한다(동시성 모드 안전).
+  // deps [value] 라 값이 바뀔 때마다 갱신되고, unmount cleanup 시점엔 마지막 커밋 값이 담겨 있어
+  // 최신값 기준으로 blob URL 을 회수한다(누수 없음).
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
   useEffect(() => {
     return () => {
       valueRef.current.forEach((p) => {

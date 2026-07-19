@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 
@@ -28,7 +29,7 @@ export function FloatingChatButton() {
   const onHome = pathname === "/";
 
   return (
-    <a
+    <Link
       href="/chat"
       aria-label="채팅"
       title="채팅"
@@ -42,6 +43,6 @@ export function FloatingChatButton() {
         style={{ color: "#0E7C8C" }}
         aria-hidden="true"
       />
-    </a>
+    </Link>
   );
 }
