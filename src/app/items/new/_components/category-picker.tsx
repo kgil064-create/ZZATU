@@ -92,9 +92,6 @@ export function CategoryPicker({
               <span className="text-sm font-medium text-foreground">
                 {category.name}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {category.code}
-              </span>
             </button>
           );
         })}

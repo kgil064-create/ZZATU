@@ -45,6 +45,15 @@ const inputClass =
 const labelClass = "block text-sm font-medium mb-1";
 const errorClass = "text-destructive text-sm mt-1";
 
+/** 필수 항목 표시(라벨 뒤 빨간 별표). 필수 여부는 itemSchema(Zod) 기준. */
+function RequiredMark() {
+  return <span className="text-red-500 ml-0.5">*</span>;
+}
+/** 선택 항목 표시(라벨 뒤 회색 (선택)). */
+function OptionalMark() {
+  return <span className="text-gray-400 text-xs ml-1">(선택)</span>;
+}
+
 /** 폼 초기값(수정 시 prefill). 미지정 필드는 등록 기본값을 쓴다. */
 export interface ItemFormValues {
   type: TradeType;
@@ -204,6 +213,8 @@ export function ItemForm({
 
   return (
     <form onSubmit={validateAndSubmit} className="space-y-8">
+      <p className="text-xs text-gray-500">* 표시는 필수 항목입니다</p>
+
       {/* 1. 거래 종류 토글 */}
       <section>
         <div className="flex gap-2">
@@ -231,7 +242,10 @@ export function ItemForm({
 
       {/* 2. 사진 */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">사진</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">
+          사진
+          {photoRequired ? <RequiredMark /> : <OptionalMark />}
+        </h2>
         <PhotoUploader
           value={photos}
           onChange={setPhotos}
@@ -246,6 +260,7 @@ export function ItemForm({
         <div className="mb-1 flex items-center justify-between">
           <label htmlFor="title" className="text-sm font-medium text-foreground">
             제목
+            <RequiredMark />
           </label>
           <span
             className={
@@ -262,7 +277,7 @@ export function ItemForm({
           maxLength={40}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="예) 인테리어 끝나고 남은 단열재"
+          placeholder="예) 데크재 방부목 38x140 30장"
           className={inputClass}
         />
         {errors.title && <p className={errorClass}>{errors.title}</p>}
@@ -274,6 +289,7 @@ export function ItemForm({
         <div>
           <label htmlFor="item_name" className={labelClass}>
             명칭
+            <RequiredMark />
           </label>
           <input
             id="item_name"
@@ -291,6 +307,7 @@ export function ItemForm({
           <div>
             <label htmlFor="spec" className={labelClass}>
               규격
+              <OptionalMark />
             </label>
             <input
               id="spec"
@@ -305,6 +322,7 @@ export function ItemForm({
           <div>
             <label htmlFor="quantity" className={labelClass}>
               수량
+              <OptionalMark />
             </label>
             <input
               id="quantity"
@@ -322,6 +340,7 @@ export function ItemForm({
           <div>
             <label htmlFor="unit" className={labelClass}>
               단위
+              <OptionalMark />
             </label>
             <input
               id="unit"
@@ -343,7 +362,10 @@ export function ItemForm({
 
       {/* 5. 카테고리 */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">카테고리</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">
+          카테고리
+          <RequiredMark />
+        </h2>
         <CategoryPicker
           categories={categories}
           value={categoryIds}
@@ -357,6 +379,7 @@ export function ItemForm({
         <section>
           <label htmlFor="price" className={labelClass}>
             {type === "request" ? "희망가" : "가격"}
+            <RequiredMark />
           </label>
           <div className="relative">
             <input
@@ -389,13 +412,16 @@ export function ItemForm({
       <section>
         <label htmlFor="description" className={labelClass}>
           상세 설명
+          <RequiredMark />
         </label>
         <textarea
           id="description"
           rows={5}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="예) 사용감 있지만 시공엔 문제없어요. 비 안 맞게 창고에 보관 중입니다. 같은 식으로 자유롭게 적어주세요."
+          placeholder={
+            '예) "신축 현장 쓰고 남은 자재입니다. 실외 보관했고 곰팡이·휨 없어요. 제주시 노형동에서 직접 가져가실 분 구합니다."'
+          }
           className={inputClass}
         />
         {errors.description && (
@@ -405,7 +431,10 @@ export function ItemForm({
 
       {/* 8. 지역 + 이동 메모 */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">지역</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">
+          지역
+          <RequiredMark />
+        </h2>
         <RegionPicker
           regions={regions}
           regionId={regionId}
@@ -418,7 +447,10 @@ export function ItemForm({
 
       {/* 9. 운반 옵션 (검증 안 함) */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">운반 옵션</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">
+          운반 옵션
+          <OptionalMark />
+        </h2>
         <TransportPicker
           options={transportOptions}
           value={transports}
@@ -433,6 +465,7 @@ export function ItemForm({
           className="block text-sm font-medium text-foreground"
         >
           연락처 (전화번호)
+          <RequiredMark />
         </label>
         <p className="mt-1 mb-2 text-xs text-muted-foreground">
           {

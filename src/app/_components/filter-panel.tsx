@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { SlidersHorizontal } from "lucide-react";
 
 interface CategoryOption {
   id: number;
@@ -84,14 +85,18 @@ export function FilterPanel({
         type="button"
         onClick={toggle}
         aria-expanded={open}
-        className={
-          "rounded-full px-4 py-1.5 text-sm font-medium transition-colors " +
-          (activeCount > 0
-            ? "bg-primary text-primary-foreground"
-            : "border border-border bg-muted text-muted-foreground")
-        }
+        className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
       >
-        필터{activeCount > 0 ? ` ${activeCount}` : ""}
+        <SlidersHorizontal size={16} aria-hidden="true" />
+        필터
+        {activeCount > 0 && (
+          <span
+            className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full text-xs font-semibold text-white"
+            style={{ backgroundColor: "#0E7C8C" }}
+          >
+            {activeCount}
+          </span>
+        )}
       </button>
 
       {open && (
