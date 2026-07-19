@@ -29,6 +29,7 @@ interface EditItem {
   region_id: number | null;
   region_memo: string | null;
   transport_options: string[];
+  delivery_option: "available" | "unavailable" | "negotiable" | null;
   contact_phone: string | null;
   item_images: { id: string; url: string; display_order: number }[];
   item_categories: { category_id: number }[];
@@ -48,7 +49,7 @@ export default async function EditItemPage({
       supabase
         .from("items")
         .select(
-          "user_id, type, title, item_name, spec, quantity, unit, price, price_option, description, region_id, region_memo, transport_options, contact_phone, item_images(id, url, display_order), item_categories(category_id)",
+          "user_id, type, title, item_name, spec, quantity, unit, price, price_option, description, region_id, region_memo, transport_options, delivery_option, contact_phone, item_images(id, url, display_order), item_categories(category_id)",
         )
         .eq("id", id)
         .maybeSingle(),
@@ -96,6 +97,7 @@ export default async function EditItemPage({
     regionId: item.region_id,
     regionMemo: item.region_memo ?? "",
     transports: item.transport_options ?? [],
+    deliveryOption: item.delivery_option ?? null,
     phone: item.contact_phone ?? "",
   };
 

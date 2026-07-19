@@ -17,6 +17,7 @@ import { itemSchema } from "@/lib/validations/item";
 import type { TradeType } from "@/lib/format";
 import { ITEM_TYPE_LABELS } from "@/lib/constants";
 import { CategoryPicker, type Category } from "./category-picker";
+import { DeliveryPicker, type DeliveryOption } from "./delivery-picker";
 import {
   PhotoUploader,
   type GalleryPhoto,
@@ -25,7 +26,7 @@ import { RegionPicker, type Region } from "./region-picker";
 import { TransportPicker, type TransportOption } from "./transport-picker";
 
 // 마스터 데이터 타입을 그대로 재노출(페이지들이 캐스팅에 사용).
-export type { Category, Region, TransportOption };
+export type { Category, Region, TransportOption, DeliveryOption };
 export type { GalleryPhoto };
 
 const TYPE_OPTIONS: { value: TradeType; label: string }[] = [
@@ -71,6 +72,7 @@ export interface ItemFormValues {
   regionId: number | null;
   regionMemo: string;
   transports: string[];
+  deliveryOption: DeliveryOption | null;
   phone: string; // raw digits
 }
 
@@ -126,6 +128,9 @@ export function ItemForm({
   const [transports, setTransports] = useState<string[]>(
     initialValues?.transports ?? [],
   );
+  const [deliveryOption, setDeliveryOption] = useState<DeliveryOption | null>(
+    initialValues?.deliveryOption ?? null,
+  );
   const [phone, setPhone] = useState(initialValues?.phone ?? "");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -134,8 +139,22 @@ export function ItemForm({
   >("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const isRequest = type === "request"; // 구해요 폼 간결화 기준
   const showPrice = type !== "free"; // 나눠요는 가격 개념 없음
   const photoRequired = type !== "request"; // 구해요만 사진 선택
+  // 구해요는 규격·수량·단위·운반 옵션·배송 여부를 숨긴다.
+  const showItemSpecs = !isRequest;
+  const showTransport = !isRequest;
+  const showDelivery = !isRequest;
+
+  /**
+   * 거래 종류 전환. 구해요로 바꾸면 "가격 협의"를 기본 선택으로 둔다(희망가 기본값).
+   * 다른 유형으로의 전환은 사용자가 고른 협의/입력 상태를 보존한다.
+   */
+  function selectType(next: TradeType) {
+    setType(next);
+    if (next === "request") setPriceNegotiable(true);
+  }
 
   function handlePriceChange(value: string) {
     const raw = value.replace(/[^0-9]/g, "");
@@ -159,19 +178,32 @@ export function ItemForm({
       type,
       title,
       item_name: itemName,
-      spec: spec || undefined,
-      quantity: quantity === "" ? undefined : Number(quantity),
-      unit: unit || undefined,
+      // 구해요는 규격·수량·단위·운반·배송을 숨기므로 제출값에서도 비운다.
+      spec: showItemSpecs ? spec || undefined : undefined,
+      quantity: showItemSpecs
+        ? quantity === ""
+          ? undefined
+          : Number(quantity)
+        : undefined,
+      unit: showItemSpecs ? unit || undefined : undefined,
       category_ids: categoryIds,
       region_id: regionId,
       region_memo: regionMemo || undefined,
-      transport_options: transports,
-      contact_phone: phone, // raw digits — Zod transform 이 정규화
+      transport_options: showTransport ? transports : [],
       description,
       ...(type !== "free" && {
-        price: typeof price === "number" ? price : undefined,
+        // 가격 협의면 금액을 비우고(null 저장) price_option=negotiable.
+        price: priceNegotiable
+          ? undefined
+          : typeof price === "number"
+            ? price
+            : undefined,
         price_option: priceNegotiable ? "negotiable" : "fixed",
       }),
+      ...(showDelivery && deliveryOption
+        ? { delivery_option: deliveryOption }
+        : {}),
+      contact_phone: phone, // raw digits — Zod transform 이 정규화
     };
 
     // 1. 클라이언트 검증
@@ -225,7 +257,7 @@ export function ItemForm({
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setType(opt.value)}
+                onClick={() => selectType(opt.value)}
                 aria-pressed={active}
                 className={
                   "rounded-full px-4 py-2 text-sm font-medium transition-colors " +
@@ -241,22 +273,7 @@ export function ItemForm({
         </div>
       </section>
 
-      {/* 2. 사진 */}
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">
-          사진
-          {photoRequired ? <RequiredMark /> : <OptionalMark />}
-        </h2>
-        <PhotoUploader
-          value={photos}
-          onChange={setPhotos}
-          maxPhotos={10}
-          required={photoRequired}
-          error={errors.photos}
-        />
-      </section>
-
-      {/* 3. 제목 */}
+      {/* 2. 제목 */}
       <section>
         <div className="mb-1 flex items-center justify-between">
           <label htmlFor="title" className="text-sm font-medium text-foreground">
@@ -284,84 +301,25 @@ export function ItemForm({
         {errors.title && <p className={errorClass}>{errors.title}</p>}
       </section>
 
-      {/* 4. 자재 정보 (명칭 / 규격·수량·단위) */}
+      {/* 3. 자재명(명칭) */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">자재 정보</h2>
-        <div>
-          <label htmlFor="item_name" className={labelClass}>
-            명칭
-            <RequiredMark />
-          </label>
-          <input
-            id="item_name"
-            type="text"
-            maxLength={30}
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-            placeholder="예) 단열재"
-            className={inputClass}
-          />
-          {errors.item_name && <p className={errorClass}>{errors.item_name}</p>}
-        </div>
-
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <div>
-            <label htmlFor="spec" className={labelClass}>
-              규격
-              <OptionalMark />
-            </label>
-            <input
-              id="spec"
-              type="text"
-              maxLength={30}
-              value={spec}
-              onChange={(e) => setSpec(e.target.value)}
-              placeholder="예) 50T 1200×600"
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label htmlFor="quantity" className={labelClass}>
-              수량
-              <OptionalMark />
-            </label>
-            <input
-              id="quantity"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              value={quantity}
-              onChange={(e) =>
-                setQuantity(e.target.value === "" ? "" : Number(e.target.value))
-              }
-              placeholder="예) 30"
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label htmlFor="unit" className={labelClass}>
-              단위
-              <OptionalMark />
-            </label>
-            <input
-              id="unit"
-              type="text"
-              maxLength={10}
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              placeholder="예) 장"
-              className={inputClass}
-            />
-          </div>
-        </div>
-        {(errors.spec || errors.quantity || errors.unit) && (
-          <p className={errorClass}>
-            {errors.spec || errors.quantity || errors.unit}
-          </p>
-        )}
+        <label htmlFor="item_name" className={labelClass}>
+          자재명
+          <RequiredMark />
+        </label>
+        <input
+          id="item_name"
+          type="text"
+          maxLength={30}
+          value={itemName}
+          onChange={(e) => setItemName(e.target.value)}
+          placeholder="예) 단열재"
+          className={inputClass}
+        />
+        {errors.item_name && <p className={errorClass}>{errors.item_name}</p>}
       </section>
 
-      {/* 5. 카테고리 */}
+      {/* 4. 카테고리 */}
       <section>
         <h2 className="mb-3 text-lg font-semibold text-foreground">
           카테고리
@@ -375,36 +333,120 @@ export function ItemForm({
         />
       </section>
 
-      {/* 6. 가격 + 가격 옵션 (나눠요면 렌더링 안 함) */}
+      {/* 5. 규격 · 수량 · 단위 (구해요는 숨김) */}
+      {showItemSpecs && (
+        <section>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label htmlFor="spec" className={labelClass}>
+                규격
+                <OptionalMark />
+              </label>
+              <input
+                id="spec"
+                type="text"
+                maxLength={30}
+                value={spec}
+                onChange={(e) => setSpec(e.target.value)}
+                placeholder="예) 50T 1200×600"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="quantity" className={labelClass}>
+                수량
+                <OptionalMark />
+              </label>
+              <input
+                id="quantity"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={quantity}
+                onChange={(e) =>
+                  setQuantity(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  )
+                }
+                placeholder="예) 30"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="unit" className={labelClass}>
+                단위
+                <OptionalMark />
+              </label>
+              <input
+                id="unit"
+                type="text"
+                maxLength={10}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="예) 장"
+                className={inputClass}
+              />
+            </div>
+          </div>
+          {(errors.spec || errors.quantity || errors.unit) && (
+            <p className={errorClass}>
+              {errors.spec || errors.quantity || errors.unit}
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* 6. 가격 (나눠요면 렌더링 안 함) — 가격 입력 / 가격 협의 2택 */}
       {showPrice && (
         <section>
           <label htmlFor="price" className={labelClass}>
-            {type === "request" ? "희망가" : "가격"}
+            {isRequest ? "희망가" : "가격"}
             <RequiredMark />
           </label>
-          <div className="relative">
-            <input
-              id="price"
-              type="text"
-              inputMode="numeric"
-              value={price === "" ? "" : price.toLocaleString("ko-KR")}
-              onChange={(e) => handlePriceChange(e.target.value)}
-              placeholder="예) 50,000"
-              className={inputClass + " pr-8"}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-              원
-            </span>
+          <div className="mb-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPriceNegotiable(false)}
+              aria-pressed={!priceNegotiable}
+              className={
+                "rounded-full px-4 py-1.5 text-sm font-medium transition-colors " +
+                (!priceNegotiable
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-border bg-muted text-muted-foreground")
+              }
+            >
+              가격 입력
+            </button>
+            <button
+              type="button"
+              onClick={() => setPriceNegotiable(true)}
+              aria-pressed={priceNegotiable}
+              className={
+                "rounded-full px-4 py-1.5 text-sm font-medium transition-colors " +
+                (priceNegotiable
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-border bg-muted text-muted-foreground")
+              }
+            >
+              가격 협의
+            </button>
           </div>
-          <label className="mt-2 flex items-center gap-2 text-sm text-foreground">
-            <input
-              type="checkbox"
-              checked={priceNegotiable}
-              onChange={(e) => setPriceNegotiable(e.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            가격 협의 가능
-          </label>
+          {!priceNegotiable && (
+            <div className="relative">
+              <input
+                id="price"
+                type="text"
+                inputMode="numeric"
+                value={price === "" ? "" : price.toLocaleString("ko-KR")}
+                onChange={(e) => handlePriceChange(e.target.value)}
+                placeholder="예) 50,000"
+                className={inputClass + " pr-8"}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                원
+              </span>
+            </div>
+          )}
           {errors.price && <p className={errorClass}>{errors.price}</p>}
         </section>
       )}
@@ -430,7 +472,22 @@ export function ItemForm({
         )}
       </section>
 
-      {/* 8. 지역 + 이동 메모 */}
+      {/* 8. 사진 */}
+      <section>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">
+          사진
+          {photoRequired ? <RequiredMark /> : <OptionalMark />}
+        </h2>
+        <PhotoUploader
+          value={photos}
+          onChange={setPhotos}
+          maxPhotos={10}
+          required={photoRequired}
+          error={errors.photos}
+        />
+      </section>
+
+      {/* 9. 지역 + 이동 메모 */}
       <section>
         <h2 className="mb-3 text-lg font-semibold text-foreground">
           지역
@@ -446,20 +503,33 @@ export function ItemForm({
         />
       </section>
 
-      {/* 9. 운반 옵션 (검증 안 함) */}
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">
-          운반 옵션
-          <OptionalMark />
-        </h2>
-        <TransportPicker
-          options={transportOptions}
-          value={transports}
-          onChange={setTransports}
-        />
-      </section>
+      {/* 10. 운반 옵션 (구해요는 숨김, 검증 안 함) */}
+      {showTransport && (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold text-foreground">
+            운반 옵션
+            <OptionalMark />
+          </h2>
+          <TransportPicker
+            options={transportOptions}
+            value={transports}
+            onChange={setTransports}
+          />
+        </section>
+      )}
 
-      {/* 10. 전화번호 */}
+      {/* 11. 배송 여부 (구해요는 숨김, 선택) */}
+      {showDelivery && (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold text-foreground">
+            배송 여부
+            <OptionalMark />
+          </h2>
+          <DeliveryPicker value={deliveryOption} onChange={setDeliveryOption} />
+        </section>
+      )}
+
+      {/* 12. 전화번호 */}
       <section>
         <label
           htmlFor="phone"
@@ -488,7 +558,7 @@ export function ItemForm({
         )}
       </section>
 
-      {/* 11. 제출 버튼 */}
+      {/* 13. 제출 버튼 */}
       <div>
         <button
           type="submit"

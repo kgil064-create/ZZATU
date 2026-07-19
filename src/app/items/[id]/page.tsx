@@ -31,6 +31,7 @@ interface DetailItem {
   created_at: string;
   description: string | null;
   transport_options: string[];
+  delivery_option: "available" | "unavailable" | "negotiable" | null;
   regions: { eupmyeondong: string } | null;
   item_images: { url: string; display_order: number }[];
   item_categories: { categories: { name: string } | null }[];
@@ -48,7 +49,7 @@ export default async function ItemDetailPage({
     supabase
       .from("items")
       .select(
-        "id, user_id, type, title, price, price_option, is_sold, created_at, description, transport_options, regions(eupmyeondong), item_images(url, display_order), item_categories(categories(name))",
+        "id, user_id, type, title, price, price_option, is_sold, created_at, description, transport_options, delivery_option, regions(eupmyeondong), item_images(url, display_order), item_categories(categories(name))",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -93,6 +94,15 @@ export default async function ItemDetailPage({
   );
 
   const region = item.regions?.eupmyeondong ?? "";
+
+  // 배송 여부: 선택된 경우에만 표시(미선택이면 렌더 안 함).
+  const deliveryLabel = item.delivery_option
+    ? {
+        available: "배송 가능",
+        unavailable: "배송 불가",
+        negotiable: "배송 협의",
+      }[item.delivery_option]
+    : null;
 
   return (
     <main className="mx-auto w-full max-w-screen-md px-4 py-4">
@@ -165,6 +175,15 @@ export default async function ItemDetailPage({
           <p className="text-sm text-muted-foreground">운반 협의</p>
         )}
       </div>
+
+      {deliveryLabel && (
+        <div className="mt-6">
+          <h2 className="mb-2 text-sm font-medium text-foreground">배송</h2>
+          <span className="rounded-full border border-border bg-card px-3 py-1 text-sm text-card-foreground">
+            {deliveryLabel}
+          </span>
+        </div>
+      )}
 
       {isOwner && (
         <div className="mt-6">

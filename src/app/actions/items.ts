@@ -50,7 +50,7 @@ export async function createItem(
   const priceFields =
     data.type === "free"
       ? { price: null, price_option: "free" as const }
-      : { price: data.price, price_option: data.price_option };
+      : { price: data.price ?? null, price_option: data.price_option };
 
   const { data: inserted, error: itemError } = await supabase
     .from("items")
@@ -65,6 +65,7 @@ export async function createItem(
       region_id: data.region_id,
       region_memo: data.region_memo ?? null,
       transport_options: data.transport_options,
+      delivery_option: data.delivery_option ?? null,
       description: data.description,
       contact_phone: data.contact_phone,
       ...priceFields,
@@ -270,7 +271,7 @@ export async function updateItem(
   const priceFields =
     data.type === "free"
       ? { price: null, price_option: "free" as const }
-      : { price: data.price, price_option: data.price_option };
+      : { price: data.price ?? null, price_option: data.price_option };
 
   const { error: upError } = await supabase
     .from("items")
@@ -284,6 +285,7 @@ export async function updateItem(
       region_id: data.region_id,
       region_memo: data.region_memo ?? null,
       transport_options: data.transport_options,
+      delivery_option: data.delivery_option ?? null,
       description: data.description,
       contact_phone: data.contact_phone,
       ...priceFields,

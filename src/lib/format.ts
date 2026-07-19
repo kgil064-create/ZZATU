@@ -26,8 +26,7 @@ function won(amount: number): string {
  * 거래종류별 가격 문자열.
  *   - 나눔(free)     → "무료"
  *   - 구해요(request) → 협의면 "희망가 협의", 아니면 "희망가 50,000원"
- *   - 판매중(sell)    → 금액+협의 "50,000원 · 협의 가능", 금액만 "50,000원",
- *                       금액 없이 협의만 "협의"
+ *   - 판매중(sell)    → 협의면 "가격 협의", 금액 있으면 "50,000원"
  */
 export function formatPrice(item: PriceInput): string {
   const negotiable = item.price_option === "negotiable";
@@ -41,11 +40,10 @@ export function formatPrice(item: PriceInput): string {
     return `희망가 ${won(item.price)}`;
   }
 
-  // sell
-  if (item.price != null) {
-    return negotiable ? `${won(item.price)} · 협의 가능` : won(item.price);
-  }
-  return "협의";
+  // sell — 협의면 금액과 무관하게 "가격 협의"로 통일.
+  if (negotiable) return "가격 협의";
+  if (item.price != null) return won(item.price);
+  return "가격 협의";
 }
 
 /**

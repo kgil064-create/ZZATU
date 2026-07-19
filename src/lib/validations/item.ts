@@ -69,6 +69,8 @@ const baseShape = {
     .array(z.number().int().positive())
     .min(1, { message: "카테고리를 1개 이상 선택해주세요" }),
   transport_options: z.array(z.string()),
+  // 배송 여부(선택). 미선택이면 undefined. DB delivery_option 컬럼과 1:1.
+  delivery_option: z.enum(["available", "unavailable", "negotiable"]).optional(),
   contact_phone: phoneSchema,
 };
 
@@ -82,17 +84,19 @@ const priceOptionField = z.enum(["fixed", "negotiable"], {
   message: "가격 옵션을 선택해주세요",
 });
 
+// 가격은 "가격 입력(fixed)"일 때만 필수. "가격 협의(negotiable)"면 price 는 생략(null 저장).
+// → price 를 optional 로 두고, 아래 superRefine 에서 fixed 인데 비었을 때만 오류.
 const sellSchema = z.object({
   type: z.literal("sell"),
   ...baseShape,
-  price: priceField,
+  price: priceField.optional(),
   price_option: priceOptionField,
 });
 
 const requestSchema = z.object({
   type: z.literal("request"),
   ...baseShape,
-  price: priceField,
+  price: priceField.optional(),
   price_option: priceOptionField,
 });
 
@@ -101,11 +105,22 @@ const freeSchema = z.object({
   ...baseShape,
 });
 
-export const itemSchema = z.discriminatedUnion("type", [
-  sellSchema,
-  requestSchema,
-  freeSchema,
-]);
+export const itemSchema = z
+  .discriminatedUnion("type", [sellSchema, requestSchema, freeSchema])
+  .superRefine((data, ctx) => {
+    // 나눠요(free)가 아니고 "가격 입력"인데 금액이 없으면 필수 오류.
+    if (
+      data.type !== "free" &&
+      data.price_option === "fixed" &&
+      data.price == null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "가격을 입력해주세요",
+        path: ["price"],
+      });
+    }
+  });
 
 export type ItemInput = z.infer<typeof itemSchema>;
 
