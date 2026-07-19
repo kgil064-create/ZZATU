@@ -29,26 +29,6 @@ export async function SiteHeader() {
                 {profile.nickname}
               </span>
               <a
-                href="/chat"
-                aria-label="채팅"
-                title="채팅"
-                className="text-primary transition-colors hover:text-primary-hover"
-              >
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              </a>
-              <a
                 href="/mypage"
                 aria-label="마이페이지"
                 title="마이페이지"

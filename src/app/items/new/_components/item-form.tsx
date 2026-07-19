@@ -15,6 +15,7 @@ import { useState, type SyntheticEvent } from "react";
 import type { ItemInput } from "@/lib/validations/item";
 import { itemSchema } from "@/lib/validations/item";
 import type { TradeType } from "@/lib/format";
+import { ITEM_TYPE_LABELS } from "@/lib/constants";
 import { CategoryPicker, type Category } from "./category-picker";
 import {
   PhotoUploader,
@@ -28,9 +29,9 @@ export type { Category, Region, TransportOption };
 export type { GalleryPhoto };
 
 const TYPE_OPTIONS: { value: TradeType; label: string }[] = [
-  { value: "request", label: "구해요" },
-  { value: "free", label: "나눔" },
-  { value: "sell", label: "판매중" },
+  { value: "request", label: ITEM_TYPE_LABELS.request },
+  { value: "free", label: ITEM_TYPE_LABELS.free },
+  { value: "sell", label: ITEM_TYPE_LABELS.sell },
 ];
 
 /** raw 숫자열 → 010-1234-5678 형태로 점진적 포맷. */
@@ -133,7 +134,7 @@ export function ItemForm({
   >("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const showPrice = type !== "free"; // 나눔은 가격 개념 없음
+  const showPrice = type !== "free"; // 나눠요는 가격 개념 없음
   const photoRequired = type !== "request"; // 구해요만 사진 선택
 
   function handlePriceChange(value: string) {
@@ -374,7 +375,7 @@ export function ItemForm({
         />
       </section>
 
-      {/* 6. 가격 + 가격 옵션 (나눔이면 렌더링 안 함) */}
+      {/* 6. 가격 + 가격 옵션 (나눠요면 렌더링 안 함) */}
       {showPrice && (
         <section>
           <label htmlFor="price" className={labelClass}>

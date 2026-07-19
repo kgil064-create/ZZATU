@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { FloatingChatButton } from "@/components/floating-chat-button";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://zzatu.vercel.app"),
@@ -33,6 +34,7 @@ export default function RootLayout({
         <SiteHeader />
         {children}
         <SiteFooter />
+        <FloatingChatButton />
       </body>
     </html>
   );

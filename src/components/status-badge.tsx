@@ -1,4 +1,10 @@
 import type { TradeType } from "@/lib/format";
+import {
+  ITEM_TYPE_LABELS,
+  ITEM_TYPE_COLORS,
+  SOLD_LABEL,
+  SOLD_BADGE_STYLE,
+} from "@/lib/constants";
 
 interface StatusBadgeProps {
   type: TradeType;
@@ -8,36 +14,22 @@ interface StatusBadgeProps {
 /**
  * 거래상태 pill 배지. 목록·상세가 공유한다. (Phase 3)
  *
- * 거래완료면 거래종류와 무관하게 회색 "거래완료". 아니면 거래종류 색:
- *   구해요=파랑 / 나눔=초록 / 판매중=딥블루(primary).
- * 색은 globals.css 의 status-* 토큰을 사용한다(판매중은 primary 틴트).
+ * 거래완료면 거래종류와 무관하게 회색 "거래완료". 아니면 거래종류별 라벨·색.
+ * 라벨/색은 lib/constants 의 ITEM_TYPE_LABELS · ITEM_TYPE_COLORS 단일 소스.
  */
-const TYPE_STYLE: Record<TradeType, { label: string; className: string }> = {
-  request: {
-    label: "구해요",
-    className: "bg-status-request-bg text-status-request",
-  },
-  free: {
-    label: "나눔",
-    className: "bg-status-free-bg text-status-free",
-  },
-  sell: {
-    label: "판매중",
-    className: "bg-primary/10 text-primary",
-  },
-};
-
 export function StatusBadge({ type, isSold }: StatusBadgeProps) {
-  const { label, className } = isSold
-    ? { label: "거래완료", className: "bg-muted text-muted-foreground" }
-    : TYPE_STYLE[type];
+  const { label, bg, text } = isSold
+    ? { label: SOLD_LABEL, bg: SOLD_BADGE_STYLE.bg, text: SOLD_BADGE_STYLE.text }
+    : {
+        label: ITEM_TYPE_LABELS[type],
+        bg: ITEM_TYPE_COLORS[type].badgeBg,
+        text: ITEM_TYPE_COLORS[type].badgeText,
+      };
 
   return (
     <span
-      className={
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium " +
-        className
-      }
+      className="inline-flex items-center rounded-full px-3 py-1 text-[13px] font-medium"
+      style={{ backgroundColor: bg, color: text }}
     >
       {label}
     </span>
