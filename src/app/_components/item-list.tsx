@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getFavoriteContext } from "@/lib/favorites";
 import type { TradeType } from "@/lib/format";
 import { ItemCard, type ItemCardData } from "./item-card";
+import { LogSearch } from "./log-search";
 
 function EmptyState({ filtering }: { filtering: boolean }) {
   return (
@@ -60,7 +61,14 @@ export async function ItemList({
       .select("item_id")
       .eq("category_id", category);
     categoryItemIds = (ic ?? []).map((r) => (r as { item_id: string }).item_id);
-    if (categoryItemIds.length === 0) return <EmptyState filtering />;
+    if (categoryItemIds.length === 0) {
+      return (
+        <>
+          <LogSearch keyword={q ?? ""} count={0} />
+          <EmptyState filtering />
+        </>
+      );
+    }
   }
 
   // 지역 규칙: 특정 권역 선택 시 그 권역 + 'all'(제주전체=어디든) 포함. region_id 목록을 구해 .in.
@@ -73,7 +81,14 @@ export async function ItemList({
       .in("si", siList)
       .lt("display_order", 100);
     regionIds = (regs ?? []).map((r) => (r as { id: number }).id);
-    if (regionIds.length === 0) return <EmptyState filtering />;
+    if (regionIds.length === 0) {
+      return (
+        <>
+          <LogSearch keyword={q ?? ""} count={0} />
+          <EmptyState filtering />
+        </>
+      );
+    }
   }
 
   let query = supabase
@@ -94,22 +109,32 @@ export async function ItemList({
   const { data, error } = await query;
   const items = (data ?? []) as unknown as ItemCardData[];
 
-  if (error || items.length === 0) return <EmptyState filtering={filtering} />;
+  if (error || items.length === 0) {
+    return (
+      <>
+        <LogSearch keyword={q ?? ""} count={0} />
+        <EmptyState filtering={filtering} />
+      </>
+    );
+  }
 
   const { userId, favoriteItemIds } = await getFavoriteContext();
   const favSet = new Set(favoriteItemIds);
 
   return (
-    <ul className="space-y-3">
-      {items.map((item) => (
-        <li key={item.id}>
-          <ItemCard
-            item={item}
-            currentUserId={userId}
-            favorited={favSet.has(item.id)}
-          />
-        </li>
-      ))}
-    </ul>
+    <>
+      <LogSearch keyword={q ?? ""} count={items.length} />
+      <ul className="space-y-3">
+        {items.map((item) => (
+          <li key={item.id}>
+            <ItemCard
+              item={item}
+              currentUserId={userId}
+              favorited={favSet.has(item.id)}
+            />
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

@@ -7,6 +7,10 @@ import { notFound } from "next/navigation";
 
 import { StatusBadge } from "@/components/status-badge";
 import { FavoriteButton } from "@/components/favorite-button";
+import {
+  VIEW_COUNT_THRESHOLD,
+  FAVORITE_COUNT_THRESHOLD,
+} from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import {
   formatPrice,
@@ -29,6 +33,8 @@ interface DetailItem {
   price_option: PriceOption;
   is_sold: boolean;
   created_at: string;
+  view_count: number;
+  favorite_count: number;
   description: string | null;
   transport_options: string[];
   delivery_option: "available" | "unavailable" | "negotiable" | null;
@@ -49,7 +55,7 @@ export default async function ItemDetailPage({
     supabase
       .from("items")
       .select(
-        "id, user_id, type, title, price, price_option, is_sold, created_at, description, transport_options, delivery_option, regions(eupmyeondong), item_images(url, display_order), item_categories(categories(name))",
+        "id, user_id, type, title, price, price_option, is_sold, created_at, view_count, favorite_count, description, transport_options, delivery_option, regions(eupmyeondong), item_images(url, display_order), item_categories(categories(name))",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -95,6 +101,10 @@ export default async function ItemDetailPage({
 
   const region = item.regions?.eupmyeondong ?? "";
 
+  // 지표 노출: 문턱 이상일 때만. 둘 다 미달이면 아무 것도 렌더하지 않는다.
+  const showViews = item.view_count >= VIEW_COUNT_THRESHOLD;
+  const showFavorites = item.favorite_count >= FAVORITE_COUNT_THRESHOLD;
+
   // 배송 여부: 선택된 경우에만 표시(미선택이면 렌더 안 함).
   const deliveryLabel = item.delivery_option
     ? {
@@ -106,8 +116,8 @@ export default async function ItemDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-screen-md px-4 py-4">
-      {/* 로그인 유저면 최근 본 글 기록(본인 글 포함). UI 없음. */}
-      {user && <RecordView itemId={item.id} />}
+      {/* 최근 본 글(로그인 전용, 서버 no-op) + 조회수(비로그인 포함, 본인 제외·세션당 1회). */}
+      <RecordView itemId={item.id} isOwner={isOwner} />
 
       {images.length > 0 && <PhotoGallery images={images} />}
 
@@ -136,6 +146,22 @@ export default async function ItemDetailPage({
             </>
           )}
           <span>{formatRelativeTime(item.created_at)}</span>
+          {showViews && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="text-xs text-gray-500">
+                조회 {item.view_count}
+              </span>
+            </>
+          )}
+          {showFavorites && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="text-xs text-gray-500">
+                찜 {item.favorite_count}
+              </span>
+            </>
+          )}
         </div>
       </div>
 

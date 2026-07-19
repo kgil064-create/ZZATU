@@ -130,11 +130,26 @@ export async function revealPhone(itemId: string): Promise<RevealPhoneResult> {
 
   const { data, error } = await supabase
     .from("items")
-    .select("contact_phone")
+    .select("contact_phone, user_id")
     .eq("id", itemId)
     .maybeSingle();
 
   if (error || !data?.contact_phone) return { error: "not_found" };
+
+  // 문의 기록: 번호 반환에 성공했고 본인 매물이 아닐 때만. 실패해도 전화 흐름을 막지 않는다.
+  const ownerId = (data as { user_id: string }).user_id;
+  if (ownerId !== user.id) {
+    try {
+      await supabase.from("item_inquiries").insert({
+        item_id: itemId,
+        user_id: user.id,
+        inquiry_type: "phone",
+      });
+    } catch {
+      // 집계 실패는 무시(본말전도 방지)
+    }
+  }
+
   return { phone: data.contact_phone as string };
 }
 

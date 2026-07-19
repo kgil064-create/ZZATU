@@ -24,3 +24,16 @@ export async function recordView(itemId: string): Promise<void> {
     { onConflict: "user_id,item_id" },
   );
 }
+
+/**
+ * 조회수 +1. (그룹6 · 지표)
+ *
+ * item_views(최근 본 글, 로그인 전용)와 분리된 총 조회수 카운터. increment_view_count RPC
+ * 는 SECURITY DEFINER 라 items RLS 를 열지 않고도 증가시킨다. 비로그인도 호출 가능.
+ * 본인 매물 제외·세션당 1회 중복 방지는 호출부(record-view.tsx)에서 처리한다.
+ * fire-and-forget: 실패해도 조용히 넘어간다.
+ */
+export async function incrementView(itemId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.rpc("increment_view_count", { p_item_id: itemId });
+}

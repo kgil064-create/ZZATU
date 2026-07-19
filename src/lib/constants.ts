@@ -34,3 +34,7 @@ export const ITEM_TYPE_COLORS: Record<
 
 /** 거래완료 배지 색. */
 export const SOLD_BADGE_STYLE = { bg: "#F1EFE8", text: "#5F5E5A" };
+
+/** 상세 페이지 지표 노출 문턱(미달이면 해당 영역 자체를 렌더하지 않음). */
+export const VIEW_COUNT_THRESHOLD = 20;
+export const FAVORITE_COUNT_THRESHOLD = 1;

@@ -42,28 +42,45 @@ export async function getOrCreateRoom(
     .eq("item_id", itemId)
     .eq("buyer_id", user.id)
     .maybeSingle();
-  if (existing) return { roomId: (existing as { id: string }).id };
 
-  // 새 방 생성
-  const { data: created, error: insertError } = await supabase
-    .from("chat_rooms")
-    .insert({ item_id: itemId, buyer_id: user.id, seller_id: sellerId })
-    .select("id")
-    .single();
+  let roomId: string | undefined = (existing as { id: string } | null)?.id;
 
-  if (insertError || !created) {
-    // 경합으로 unique 충돌 시 기존 방 재조회
-    const { data: retry } = await supabase
+  if (!roomId) {
+    // 새 방 생성
+    const { data: created, error: insertError } = await supabase
       .from("chat_rooms")
+      .insert({ item_id: itemId, buyer_id: user.id, seller_id: sellerId })
       .select("id")
-      .eq("item_id", itemId)
-      .eq("buyer_id", user.id)
-      .maybeSingle();
-    if (retry) return { roomId: (retry as { id: string }).id };
-    return { error: "채팅방을 시작할 수 없어요" };
+      .single();
+
+    if (insertError || !created) {
+      // 경합으로 unique 충돌 시 기존 방 재조회
+      const { data: retry } = await supabase
+        .from("chat_rooms")
+        .select("id")
+        .eq("item_id", itemId)
+        .eq("buyer_id", user.id)
+        .maybeSingle();
+      if (!retry) return { error: "채팅방을 시작할 수 없어요" };
+      roomId = (retry as { id: string }).id;
+    } else {
+      roomId = (created as { id: string }).id;
+    }
   }
 
-  return { roomId: (created as { id: string }).id };
+  // 문의 기록(chat): 본인 글은 위에서 이미 차단됨. 기존 방이어도 매번 기록(재문의도 문의).
+  // 실패해도 채팅 진입을 막지 않는다.
+  try {
+    await supabase.from("item_inquiries").insert({
+      item_id: itemId,
+      user_id: user.id,
+      inquiry_type: "chat",
+    });
+  } catch {
+    // 집계 실패는 무시
+  }
+
+  return { roomId };
 }
 
 export interface SendMessageResult {
