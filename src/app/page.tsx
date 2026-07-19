@@ -28,8 +28,18 @@ export default async function Home({
     rawCategory && /^\d+$/.test(rawCategory) ? Number(rawCategory) : undefined;
 
   const rawRegion = typeof sp.region === "string" ? sp.region : undefined;
-  const region: "jeju" | "seogwipo" | "all" | undefined =
-    rawRegion === "jeju" || rawRegion === "seogwipo" || rawRegion === "all"
+  const region:
+    | "jeju"
+    | "seogwipo"
+    | "east"
+    | "west"
+    | "all"
+    | undefined =
+    rawRegion === "jeju" ||
+    rawRegion === "seogwipo" ||
+    rawRegion === "east" ||
+    rawRegion === "west" ||
+    rawRegion === "all"
       ? rawRegion
       : undefined;
 

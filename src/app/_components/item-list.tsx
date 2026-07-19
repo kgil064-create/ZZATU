@@ -38,7 +38,7 @@ export async function ItemList({
   type?: TradeType;
   q?: string;
   category?: number;
-  region?: "jeju" | "seogwipo" | "all";
+  region?: "jeju" | "seogwipo" | "east" | "west" | "all";
 }) {
   const supabase = await createClient();
 
@@ -63,15 +63,10 @@ export async function ItemList({
     if (categoryItemIds.length === 0) return <EmptyState filtering />;
   }
 
-  // 지역 규칙: 시(市) 선택 시 그 시 + 'all'(제주전체) 포함. region_id 목록을 구해 .in.
+  // 지역 규칙: 특정 권역 선택 시 그 권역 + 'all'(제주전체=어디든) 포함. region_id 목록을 구해 .in.
   let regionIds: number[] | null = null;
   if (region) {
-    const siList =
-      region === "jeju"
-        ? ["jeju", "all"]
-        : region === "seogwipo"
-          ? ["seogwipo", "all"]
-          : ["all"];
+    const siList = region === "all" ? ["all"] : [region, "all"];
     const { data: regs } = await supabase
       .from("regions")
       .select("id")

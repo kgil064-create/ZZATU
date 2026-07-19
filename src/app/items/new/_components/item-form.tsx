@@ -148,12 +148,22 @@ export function ItemForm({
   const showDelivery = !isRequest;
 
   /**
-   * 거래 종류 전환. 구해요로 바꾸면 "가격 협의"를 기본 선택으로 둔다(희망가 기본값).
-   * 다른 유형으로의 전환은 사용자가 고른 협의/입력 상태를 보존한다.
+   * 거래 종류 전환.
+   *  - 구해요로 바꾸면 "가격 협의"를 기본 선택으로 둔다(희망가 기본값).
+   *  - 구해요가 아닌 유형으로 바꿀 때 '제주 전체'(이동 가능)가 선택돼 있으면 무효 값이므로
+   *    지역 선택을 초기화해 사용자가 다시 고르게 한다.
+   * 그 외 협의/입력 상태는 사용자가 고른 값을 보존한다.
    */
   function selectType(next: TradeType) {
     setType(next);
-    if (next === "request") setPriceNegotiable(true);
+    if (next === "request") {
+      setPriceNegotiable(true);
+      return;
+    }
+    const allRegionId = regions.find((r) => r.si === "all")?.id;
+    if (allRegionId != null && regionId === allRegionId) {
+      setRegionId(null);
+    }
   }
 
   function handlePriceChange(value: string) {
@@ -499,6 +509,12 @@ export function ItemForm({
           onRegionChange={setRegionId}
           regionMemo={regionMemo}
           onRegionMemoChange={setRegionMemo}
+          allowAll={isRequest}
+          memoPlaceholder={
+            isRequest
+              ? "예) 제주시 쪽이면 바로 갈 수 있어요"
+              : "예) 애월읍 하귀리, 직접 가져가셔야 해요"
+          }
           error={errors.region_id}
         />
       </section>

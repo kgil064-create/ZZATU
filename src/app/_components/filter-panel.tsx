@@ -9,7 +9,7 @@ interface CategoryOption {
   name: string;
 }
 interface RegionOption {
-  si: string; // 'jeju' | 'seogwipo' | 'all'
+  si: string; // 'jeju' | 'seogwipo' | 'east' | 'west' | 'all'
   eupmyeondong: string; // 표시 라벨
 }
 
