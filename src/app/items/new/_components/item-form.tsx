@@ -10,7 +10,7 @@
  * 상태는 React Hook Form 대신 useState(설계서 4번 메모 유지). 폼이 더 커지면 RHF 재검토.
  */
 
-import { useState, type SyntheticEvent } from "react";
+import { useRef, useState, type SyntheticEvent } from "react";
 
 import type { ItemInput } from "@/lib/validations/item";
 import { itemSchema } from "@/lib/validations/item";
@@ -42,10 +42,31 @@ function formatPhone(d: string) {
   return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7, 11)}`;
 }
 
-const inputClass =
-  "w-full rounded-base border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring";
+const inputBase =
+  "w-full rounded-base border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring";
 const labelClass = "block text-sm font-medium mb-1";
-const errorClass = "text-destructive text-sm mt-1";
+const errorClass = "text-sm text-red-600 mt-1";
+
+/**
+ * 화면상(위→아래) 필수 필드 순서 + 스크롤 타깃 정보.
+ * 첫 누락 필드는 Zod issue 순서가 아니라 이 순서 기준으로 판정한다.
+ *  - inputId: 네이티브 input/textarea 의 DOM id (스크롤 후 focus)
+ *  - custom : 커스텀 UI 섹션 키 (ref 로 스크롤 + 테두리 강조)
+ */
+const REQUIRED_FIELD_ORDER: {
+  key: string;
+  inputId?: string;
+  custom?: "category" | "photo" | "region";
+}[] = [
+  { key: "title", inputId: "title" },
+  { key: "item_name", inputId: "item_name" },
+  { key: "category_ids", custom: "category" },
+  { key: "price", inputId: "price" },
+  { key: "description", inputId: "description" },
+  { key: "photos", custom: "photo" },
+  { key: "region_id", custom: "region" },
+  { key: "contact_phone", inputId: "phone" },
+];
 
 /** 필수 항목 표시(라벨 뒤 빨간 별표). 필수 여부는 itemSchema(Zod) 기준. */
 function RequiredMark() {
@@ -139,6 +160,68 @@ export function ItemForm({
   >("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // 커스텀 UI 섹션 스크롤 타깃 ref + 제출 실패 시 잠시 강조할 섹션 키.
+  const categorySectionRef = useRef<HTMLElement>(null);
+  const photoSectionRef = useRef<HTMLElement>(null);
+  const regionSectionRef = useRef<HTMLElement>(null);
+  const [highlightKey, setHighlightKey] = useState<string | null>(null);
+
+  /** 에러가 있는 네이티브 input 은 테두리를 빨간색으로. */
+  function inputCls(key?: string, extra?: string) {
+    const hasError = key ? Boolean(errors[key]) : false;
+    return (
+      inputBase +
+      (hasError ? " border-red-500" : " border-input") +
+      (extra ? " " + extra : "")
+    );
+  }
+
+  /** 사용자가 필드를 수정하기 시작하면 그 필드 에러를 즉시 제거. */
+  function clearError(key: string) {
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  /** 첫 누락 필드로 스크롤(+네이티브면 focus / 커스텀이면 섹션 2초 강조). */
+  function focusFirstError(errs: Record<string, string>) {
+    const first = REQUIRED_FIELD_ORDER.find((f) => errs[f.key]);
+    if (!first) return;
+
+    if (first.inputId) {
+      const el = document.getElementById(first.inputId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        (el as HTMLElement).focus({ preventScroll: true });
+        return;
+      }
+    }
+    const refByCustom: Record<string, HTMLElement | null> = {
+      category: categorySectionRef.current,
+      photo: photoSectionRef.current,
+      region: regionSectionRef.current,
+    };
+    const node = first.custom ? refByCustom[first.custom] : null;
+    if (node) {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightKey(first.key);
+      window.setTimeout(
+        () => setHighlightKey((k) => (k === first.key ? null : k)),
+        2000,
+      );
+    }
+  }
+
+  /** 커스텀 섹션 강조 링 클래스. */
+  function sectionRing(key: string) {
+    return highlightKey === key
+      ? " rounded-base ring-2 ring-red-400 transition-shadow"
+      : "";
+  }
+
   const isRequest = type === "request"; // 구해요 폼 간결화 기준
   const showPrice = type !== "free"; // 나눠요는 가격 개념 없음
   const photoRequired = type !== "request"; // 구해요만 사진 선택
@@ -156,6 +239,9 @@ export function ItemForm({
    */
   function selectType(next: TradeType) {
     setType(next);
+    // 유형이 바뀌면 필수/숨김 필드 구성이 달라지므로 이전 유형의 에러·강조를 비운다.
+    setErrors({});
+    setHighlightKey(null);
     if (next === "request") {
       setPriceNegotiable(true);
       return;
@@ -167,6 +253,7 @@ export function ItemForm({
   }
 
   function handlePriceChange(value: string) {
+    clearError("price");
     const raw = value.replace(/[^0-9]/g, "");
     if (raw === "") {
       setPrice("");
@@ -177,6 +264,7 @@ export function ItemForm({
   }
 
   function handlePhoneChange(value: string) {
+    clearError("contact_phone");
     setPhone(value.replace(/[^0-9]/g, "").slice(0, 11));
   }
 
@@ -227,11 +315,15 @@ export function ItemForm({
     }
     // 사진은 Zod 스키마 밖이라 별도 검증.
     if (photoRequired && photos.length === 0) {
-      nextErrors.photos = "사진을 1장 이상 추가해주세요";
+      nextErrors.photos = "사진을 1장 이상 등록해주세요";
     }
 
     setErrors(nextErrors);
-    if (!result.success || Object.keys(nextErrors).length > 0) return;
+    if (!result.success || Object.keys(nextErrors).length > 0) {
+      // 화면상 가장 위 누락 필드로 스크롤 + 포커스/강조. (서버 액션 호출 안 함)
+      focusFirstError(nextErrors);
+      return;
+    }
 
     // 2. 모드별 영속화는 onSubmit 에 위임. 성공 시 onSubmit 이 화면을 이동시킨다.
     try {
@@ -256,6 +348,11 @@ export function ItemForm({
 
   return (
     <form onSubmit={validateAndSubmit} className="space-y-8">
+      {Object.keys(errors).length > 0 && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          입력하지 않은 필수 항목이 {Object.keys(errors).length}개 있어요
+        </div>
+      )}
       <p className="text-xs text-gray-500">* 표시는 필수 항목입니다</p>
 
       {/* 1. 거래 종류 토글 */}
@@ -304,9 +401,12 @@ export function ItemForm({
           type="text"
           maxLength={40}
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            clearError("title");
+          }}
           placeholder="예) 데크재 방부목 38x140 30장"
-          className={inputClass}
+          className={inputCls("title")}
         />
         {errors.title && <p className={errorClass}>{errors.title}</p>}
       </section>
@@ -322,15 +422,18 @@ export function ItemForm({
           type="text"
           maxLength={30}
           value={itemName}
-          onChange={(e) => setItemName(e.target.value)}
+          onChange={(e) => {
+            setItemName(e.target.value);
+            clearError("item_name");
+          }}
           placeholder="예) 단열재"
-          className={inputClass}
+          className={inputCls("item_name")}
         />
         {errors.item_name && <p className={errorClass}>{errors.item_name}</p>}
       </section>
 
       {/* 4. 카테고리 */}
-      <section>
+      <section ref={categorySectionRef} className={sectionRing("category_ids")}>
         <h2 className="mb-3 text-lg font-semibold text-foreground">
           카테고리
           <RequiredMark />
@@ -338,7 +441,10 @@ export function ItemForm({
         <CategoryPicker
           categories={categories}
           value={categoryIds}
-          onChange={setCategoryIds}
+          onChange={(next) => {
+            setCategoryIds(next);
+            clearError("category_ids");
+          }}
           error={errors.category_ids}
         />
       </section>
@@ -359,7 +465,7 @@ export function ItemForm({
                 value={spec}
                 onChange={(e) => setSpec(e.target.value)}
                 placeholder="예) 50T 1200×600"
-                className={inputClass}
+                className={inputCls("spec")}
               />
             </div>
             <div>
@@ -379,7 +485,7 @@ export function ItemForm({
                   )
                 }
                 placeholder="예) 30"
-                className={inputClass}
+                className={inputCls("quantity")}
               />
             </div>
             <div>
@@ -394,7 +500,7 @@ export function ItemForm({
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="예) 장"
-                className={inputClass}
+                className={inputCls("unit")}
               />
             </div>
           </div>
@@ -450,7 +556,7 @@ export function ItemForm({
                 value={price === "" ? "" : price.toLocaleString("ko-KR")}
                 onChange={(e) => handlePriceChange(e.target.value)}
                 placeholder="예) 50,000"
-                className={inputClass + " pr-8"}
+                className={inputCls("price", "pr-8")}
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 원
@@ -471,11 +577,14 @@ export function ItemForm({
           id="description"
           rows={5}
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => {
+            setDescription(e.target.value);
+            clearError("description");
+          }}
           placeholder={
             '예) "신축 현장 쓰고 남은 자재입니다. 실외 보관했고 곰팡이·휨 없어요. 제주시 노형동에서 직접 가져가실 분 구합니다."'
           }
-          className={inputClass}
+          className={inputCls("description")}
         />
         {errors.description && (
           <p className={errorClass}>{errors.description}</p>
@@ -483,14 +592,17 @@ export function ItemForm({
       </section>
 
       {/* 8. 사진 */}
-      <section>
+      <section ref={photoSectionRef} className={sectionRing("photos")}>
         <h2 className="mb-3 text-lg font-semibold text-foreground">
           사진
           {photoRequired ? <RequiredMark /> : <OptionalMark />}
         </h2>
         <PhotoUploader
           value={photos}
-          onChange={setPhotos}
+          onChange={(next) => {
+            setPhotos(next);
+            clearError("photos");
+          }}
           maxPhotos={10}
           required={photoRequired}
           error={errors.photos}
@@ -498,7 +610,7 @@ export function ItemForm({
       </section>
 
       {/* 9. 지역 + 이동 메모 */}
-      <section>
+      <section ref={regionSectionRef} className={sectionRing("region_id")}>
         <h2 className="mb-3 text-lg font-semibold text-foreground">
           지역
           <RequiredMark />
@@ -506,7 +618,10 @@ export function ItemForm({
         <RegionPicker
           regions={regions}
           regionId={regionId}
-          onRegionChange={setRegionId}
+          onRegionChange={(next) => {
+            setRegionId(next);
+            clearError("region_id");
+          }}
           regionMemo={regionMemo}
           onRegionMemoChange={setRegionMemo}
           allowAll={isRequest}
@@ -567,7 +682,7 @@ export function ItemForm({
           value={formatPhone(phone)}
           onChange={(e) => handlePhoneChange(e.target.value)}
           placeholder="010-1234-5678"
-          className={inputClass}
+          className={inputCls("contact_phone")}
         />
         {errors.contact_phone && (
           <p className={errorClass}>{errors.contact_phone}</p>

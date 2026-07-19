@@ -102,7 +102,7 @@ export function RegionPicker({
         })}
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div>
         <label
