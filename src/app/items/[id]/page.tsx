@@ -3,6 +3,7 @@
 // 보안: contact_phone 은 이 쿼리에서 선택하지 않는다(초기 HTML 비노출, 결정 #1).
 // 전화번호는 CallButton 의 revealPhone 액션에서만 받아 tel: 로 연결한다.
 
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { StatusBadge } from "@/components/status-badge";
@@ -23,6 +24,42 @@ import { ChatButton } from "./_components/chat-button";
 import { OwnerControls } from "./_components/owner-controls";
 import { PhotoGallery } from "./_components/photo-gallery";
 import { RecordView } from "./_components/record-view";
+
+/**
+ * 매물별 동적 메타데이터. (SEO)
+ *
+ * 제목 + 지역 + 가격으로 title/description 을 만들어 개별 매물이 검색에 걸리게 한다.
+ * OG 이미지는 루트 opengraph-image.tsx(파일 컨벤션)를 그대로 상속(여기서 이미지 미지정).
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("items")
+    .select("title, price, price_option, type, regions(eupmyeondong)")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!data) return {}; // 없는 매물 → 레이아웃 기본 메타 사용
+
+  const item = data as unknown as {
+    title: string;
+    price: number | null;
+    price_option: PriceOption;
+    type: TradeType;
+    regions: { eupmyeondong: string } | null;
+  };
+  const region = item.regions?.eupmyeondong ?? "제주";
+  const priceText = formatPrice(item);
+  const title = `${item.title} · ${region} · ${priceText}`;
+  const description = `${region}에서 거래하는 건축자재 '${item.title}' (${priceText}). 제주 건축자재·자투리 거래는 짜투.`;
+
+  return { title, description, openGraph: { title, description } };
+}
 
 interface DetailItem {
   id: string;
