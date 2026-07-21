@@ -7,19 +7,22 @@ import { FloatingChatButton } from "@/components/floating-chat-button";
 export const metadata: Metadata = {
   metadataBase: new URL("https://zzatu.vercel.app"),
   title: {
-    default: "짜투(ZZATU) — 제주 건축자재 중고거래",
+    default: "짜투(ZZATU) — 제주 건축자재 자투리 거래",
     template: "%s | 짜투",
   },
   description:
-    "제주 지역 건축자재를 사고, 팔고, 나누고, 구하는 중고거래 플랫폼. 자재의 가치를 잇다.",
+    "제주에서 현장에 남은 건축자재와 자투리 자재를 사고팔고 나누는 중고거래 플랫폼. 남은 자재의 가치를 잇다.",
   openGraph: {
-    title: "짜투(ZZATU) — 제주 건축자재 중고거래",
+    title: "짜투(ZZATU) — 제주 건축자재 자투리 거래",
     description:
-      "제주 지역 건축자재를 사고, 팔고, 나누고, 구하는 중고거래 플랫폼. 자재의 가치를 잇다.",
+      "제주에서 현장에 남은 건축자재와 자투리 자재를 사고팔고 나누는 중고거래 플랫폼. 남은 자재의 가치를 잇다.",
     url: "https://zzatu.vercel.app",
     siteName: "짜투",
     locale: "ko_KR",
     type: "website",
+  },
+  verification: {
+    google: "AYaLf0L1dOT8fmwR9ICYIfKsBX1pbGb5hXOTvllerSk",
   },
 };
 
