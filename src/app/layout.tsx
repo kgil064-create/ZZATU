@@ -24,6 +24,13 @@ export const metadata: Metadata = {
   verification: {
     google: "AYaLf0L1dOT8fmwR9ICYIfKsBX1pbGb5hXOTvllerSk",
   },
+  // iOS 는 매니페스트를 거의 읽지 않는다 — 홈 화면 추가 시 standalone 실행과
+  // 앱 이름은 이 메타 태그로 결정된다. 아이콘은 app/apple-icon.png 가 담당.
+  appleWebApp: {
+    capable: true,
+    title: "짜투",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({

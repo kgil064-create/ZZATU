@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { TradeType } from "@/lib/format";
 import { FloatingCreateButton } from "@/components/floating-create-button";
+import { InstallBanner } from "@/components/install-banner";
 import { FilterPanel } from "./_components/filter-panel";
 import { ItemList } from "./_components/item-list";
 import { SearchBar } from "./_components/search-bar";
@@ -64,6 +65,10 @@ export default async function Home({
 
   return (
     <main className="mx-auto w-full max-w-screen-md px-4 py-4">
+      {/* 홈 화면 추가 안내. 여백(mb-3)은 컴포넌트가 직접 가진다 —
+          숨겨질 때 빈 공간이 남지 않게 하려는 것. */}
+      <InstallBanner />
+
       {/* useSearchParams 를 쓰는 클라이언트 컴포넌트는 Suspense 로 감싼다. */}
       <Suspense>
         <SearchBar />
