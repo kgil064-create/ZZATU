@@ -137,16 +137,19 @@ export async function revealPhone(itemId: string): Promise<RevealPhoneResult> {
   if (error || !data?.contact_phone) return { error: "not_found" };
 
   // 문의 기록: 번호 반환에 성공했고 본인 매물이 아닐 때만. 실패해도 전화 흐름을 막지 않는다.
+  // ⚠️ supabase-js 는 RLS·CHECK 위반에 throw 하지 않고 { error } 를 돌려준다 —
+  //    try/catch 로는 못 잡으므로 error 를 직접 확인해 로그만 남긴다.
   const ownerId = (data as { user_id: string }).user_id;
   if (ownerId !== user.id) {
-    try {
-      await supabase.from("item_inquiries").insert({
+    const { error: inquiryError } = await supabase
+      .from("item_inquiries")
+      .insert({
         item_id: itemId,
         user_id: user.id,
         inquiry_type: "phone",
       });
-    } catch {
-      // 집계 실패는 무시(본말전도 방지)
+    if (inquiryError) {
+      console.error("[revealPhone] 문의 기록 실패:", inquiryError.message);
     }
   }
 

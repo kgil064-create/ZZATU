@@ -70,14 +70,15 @@ export async function getOrCreateRoom(
 
   // 문의 기록(chat): 본인 글은 위에서 이미 차단됨. 기존 방이어도 매번 기록(재문의도 문의).
   // 실패해도 채팅 진입을 막지 않는다.
-  try {
-    await supabase.from("item_inquiries").insert({
-      item_id: itemId,
-      user_id: user.id,
-      inquiry_type: "chat",
-    });
-  } catch {
-    // 집계 실패는 무시
+  // ⚠️ supabase-js 는 RLS·CHECK 위반에 throw 하지 않고 { error } 를 돌려준다 —
+  //    try/catch 로는 못 잡으므로 error 를 직접 확인해 로그만 남긴다.
+  const { error: inquiryError } = await supabase.from("item_inquiries").insert({
+    item_id: itemId,
+    user_id: user.id,
+    inquiry_type: "chat",
+  });
+  if (inquiryError) {
+    console.error("[getOrCreateRoom] 문의 기록 실패:", inquiryError.message);
   }
 
   return { roomId };
