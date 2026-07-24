@@ -23,7 +23,7 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-type Mode = "kakao" | "ios" | "android";
+type Mode = "kakao" | "samsung" | "ios" | "android";
 
 export function InstallBanner() {
   // 환경 판정은 브라우저에서만 가능하다. 서버 스냅샷을 null 로 두면 SSR 결과와
@@ -85,6 +85,23 @@ export function InstallBanner() {
           우측 위
           <EllipsisVertical size={14} aria-hidden="true" />
           → &ldquo;다른 브라우저로 열기&rdquo;
+        </p>
+      </Shell>
+    );
+  }
+
+  // 삼성 인터넷: beforeinstallprompt 를 받아뒀더라도 [추가] 버튼을 띄우지 않는다 —
+  // 설치는 되지만 Play 프로텍트 경고가 뒤따라서 안 하느니만 못하다.
+  if (mode === "samsung") {
+    return (
+      <Shell
+        tone="brand"
+        icon={<Smartphone size={18} aria-hidden="true" />}
+        title="짜투를 홈 화면에 추가"
+        onDismiss={dismiss}
+      >
+        <p className="mt-0.5 text-xs text-[#0F6E56]">
+          크롬으로 열어서 추가해주세요. 삼성 인터넷에서는 설치 경고가 표시됩니다.
         </p>
       </Shell>
     );
@@ -237,6 +254,11 @@ function detectMode(): Mode | null {
 
   // 카카오톡 인앱 브라우저는 홈 화면 추가 자체가 불가능하다.
   if (/KAKAOTALK/i.test(ua)) return "kakao";
+
+  // 삼성 인터넷은 자신이 만드는 WebAPK 의 targetSdkVersion 이 낮아 설치 직후 Play
+  // 프로텍트가 "안전하지 않은 앱 차단됨" 경고를 띄운다. 앱 코드로는 못 고치므로
+  // 프롬프트를 쓰지 않고 크롬으로 유도한다. (UA 에 Chrome 도 들어 있어 android 분기보다 앞.)
+  if (/SamsungBrowser/i.test(ua)) return "samsung";
 
   // iPadOS 13+ 는 UA 가 매킨토시로 나와서 터치 지원 여부로 함께 판정한다.
   const isIOS =
