@@ -38,3 +38,9 @@ export const SOLD_BADGE_STYLE = { bg: "#F1EFE8", text: "#5F5E5A" };
 /** 상세 페이지 지표 노출 문턱(미달이면 해당 영역 자체를 렌더하지 않음). */
 export const VIEW_COUNT_THRESHOLD = 20;
 export const FAVORITE_COUNT_THRESHOLD = 1;
+
+/**
+ * 댓글 최대 길이. DB 의 comments_content_length_check(btrim 기준 1~500자)와 같은 값이며
+ * 서버 액션·입력창이 함께 참조한다. ("use server" 파일은 함수만 export 할 수 있어 여기 둔다.)
+ */
+export const COMMENT_MAX_LENGTH = 500;

@@ -21,6 +21,10 @@ import {
 } from "@/lib/format";
 import { CallButton } from "./_components/call-button";
 import { ChatButton } from "./_components/chat-button";
+import {
+  CommentSection,
+  type ItemComment,
+} from "./_components/comment-section";
 import { OwnerControls } from "./_components/owner-controls";
 import { PhotoGallery } from "./_components/photo-gallery";
 import { RecordView } from "./_components/record-view";
@@ -80,6 +84,15 @@ interface DetailItem {
   item_categories: { categories: { name: string } | null }[];
 }
 
+/** comments + profiles 조인 원본 행. 화면에 넘길 땐 nickname 만 남긴다. */
+interface CommentRow {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  profiles: { nickname: string } | null;
+}
+
 export default async function ItemDetailPage({
   params,
 }: {
@@ -106,18 +119,42 @@ export default async function ItemDetailPage({
   const user = userResult.data.user;
   const isOwner = !!user && user.id === item.user_id;
 
+  // 댓글은 '구해요'에만 노출한다. 다른 유형은 쿼리 자체를 만들지 않는다.
+  // (item.type 을 알아야 판정되므로 위 Promise.all 에는 넣을 수 없다 — 대신 찜 조회와 묶는다.)
+  const isRequest = item.type === "request";
+
+  const [favResult, commentsResult] = await Promise.all([
+    user
+      ? supabase
+          .from("favorites")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("item_id", item.id)
+          .maybeSingle()
+      : null,
+    isRequest
+      ? supabase
+          .from("comments")
+          .select("id, content, created_at, user_id, profiles(nickname)")
+          .eq("item_id", item.id)
+          .order("created_at", { ascending: true })
+      : null,
+  ]);
+
   // 찜 여부(로그인 시) + 하트 노출 여부(비로그인 또는 남의 글)
-  let favorited = false;
-  if (user) {
-    const { data: fav } = await supabase
-      .from("favorites")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("item_id", item.id)
-      .maybeSingle();
-    favorited = !!fav;
-  }
+  const favorited = !!favResult?.data;
   const showFavorite = !user || !isOwner;
+
+  // profiles 조인 결과를 nickname 하나로 펴서 클라이언트 컴포넌트에 넘긴다.
+  const comments: ItemComment[] = (
+    (commentsResult?.data ?? []) as unknown as CommentRow[]
+  ).map((c) => ({
+    id: c.id,
+    content: c.content,
+    created_at: c.created_at,
+    user_id: c.user_id,
+    nickname: c.profiles?.nickname ?? null,
+  }));
 
   const images = [...item.item_images]
     .sort((a, b) => a.display_order - b.display_order)
@@ -265,6 +302,16 @@ export default async function ItemDetailPage({
             <CallButton itemId={item.id} isSold={item.is_sold} />
           </div>
         </div>
+      )}
+
+      {/* 댓글은 '구해요'에만. isOwner 조건부 블록 바깥 — 주인도 답글을 단다. */}
+      {isRequest && (
+        <CommentSection
+          itemId={item.id}
+          ownerId={item.user_id}
+          myId={user?.id ?? null}
+          comments={comments}
+        />
       )}
     </main>
   );
