@@ -5,7 +5,7 @@ import type { TradeType } from "@/lib/format";
 import { FloatingCreateButton } from "@/components/floating-create-button";
 import { InstallBanner } from "@/components/install-banner";
 import { FilterPanel } from "./_components/filter-panel";
-import { ItemList } from "./_components/item-list";
+import { ItemList, ItemListSkeleton } from "./_components/item-list";
 import { SearchBar } from "./_components/search-bar";
 import { TypeTabs } from "./_components/type-tabs";
 
@@ -79,8 +79,16 @@ export default async function Home({
           <FilterPanel categories={categories} regions={regions} />
         </div>
       </Suspense>
+      {/* 목록은 DB 조회를 기다린다 — Suspense 로 끊어 검색·필터 UI 가 먼저 뜨게 한다.
+          key 에 필터 조합을 넣는 건 의도적이다: 필터가 바뀌면 경계가 새로 마운트되면서
+          스켈레톤이 다시 보인다(키가 고정이면 이전 목록이 그대로 남아 반응이 없어 보인다). */}
       <div className="mt-4">
-        <ItemList type={type} q={q} category={category} region={region} />
+        <Suspense
+          key={`${type ?? ""}|${q ?? ""}|${category ?? ""}|${region ?? ""}`}
+          fallback={<ItemListSkeleton />}
+        >
+          <ItemList type={type} q={q} category={category} region={region} />
+        </Suspense>
       </div>
 
       {/* 메인 목록에서만 노출되는 자재 등록 FAB */}

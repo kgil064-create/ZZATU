@@ -24,6 +24,44 @@ export interface ItemCardData {
 }
 
 /**
+ * 목록 카드 1개의 로딩 자리표시자.
+ *
+ * 아래 ItemCard 와 **같은 골격·같은 여백**을 쓴다. 각 텍스트 줄은 실제와 동일한
+ * 타이포 클래스(text-sm / text-xs / text-[13px])에 text-transparent + 배경을 얹어
+ * 만든다 — 임의 높이를 찍지 않으므로 줄 높이가 실제 카드와 정확히 일치하고,
+ * 스켈레톤이 실제 카드로 바뀔 때 세로 이동이 없다.
+ */
+export function ItemCardSkeleton() {
+  return (
+    <div className="relative animate-pulse" aria-hidden="true">
+      <div className="flex gap-3 rounded-base border border-border bg-card p-3 shadow-sm">
+        {/* 썸네일 자리 — 실제와 같은 96px(h-24 w-24) */}
+        <div className="h-24 w-24 shrink-0 rounded-base bg-border" />
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div>
+            <span className="inline-flex items-center rounded-full bg-border px-3 py-1 text-[13px] font-medium text-transparent">
+              판매중
+            </span>
+          </div>
+          <h3 className="mt-1 w-2/3 truncate rounded-md bg-border text-sm font-medium text-transparent">
+            제목 자리표시자
+          </h3>
+          <p className="mt-1 w-1/3 truncate rounded-md bg-border text-sm font-semibold text-transparent">
+            가격
+          </p>
+          <div className="mt-auto flex items-center gap-1 pt-1 text-xs">
+            <span className="w-24 truncate rounded-md bg-border text-transparent">
+              지역 · 시간
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * 목록 카드 1개. (Phase 3 / 찜 추가)
  *
  * 카드 전체가 상세로 가는 Link. 거래완료면 dim. 찜 하트는 카드 우상단에 Link 의 형제로

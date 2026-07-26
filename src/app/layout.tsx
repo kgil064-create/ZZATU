@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
-import { SiteHeader } from "@/components/site-header";
+import { SiteHeader, SiteHeaderSkeleton } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 
@@ -41,7 +42,11 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
+        {/* 헤더는 세션 조회를 기다린다 — Suspense 로 끊어 페이지 본문이 헤더를
+            기다리지 않고 먼저 스트리밍되게 한다. */}
+        <Suspense fallback={<SiteHeaderSkeleton />}>
+          <SiteHeader />
+        </Suspense>
         {children}
         <SiteFooter />
         <FloatingChatButton />

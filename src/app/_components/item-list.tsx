@@ -3,8 +3,21 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getFavoriteContext } from "@/lib/favorites";
 import type { TradeType } from "@/lib/format";
-import { ItemCard, type ItemCardData } from "./item-card";
+import { ItemCard, ItemCardSkeleton, type ItemCardData } from "./item-card";
 import { LogSearch } from "./log-search";
+
+/** ItemList 의 Suspense fallback. 실제 목록과 같은 ul/li 간격(space-y-3)을 쓴다. */
+export function ItemListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <ul className="space-y-3">
+      {Array.from({ length: count }, (_, i) => (
+        <li key={i}>
+          <ItemCardSkeleton />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function EmptyState({ filtering }: { filtering: boolean }) {
   return (
@@ -106,7 +119,13 @@ export async function ItemList({
   if (categoryItemIds) query = query.in("id", categoryItemIds);
   if (regionIds) query = query.in("region_id", regionIds);
 
-  const { data, error } = await query;
+  // 찜 컨텍스트는 아이템 조회 결과에 의존하지 않는다 — 직렬로 기다리지 않고 함께 던진다.
+  // (둘 다 Supabase 왕복이라 직렬이면 지연이 그대로 더해진다.)
+  const [{ data, error }, { userId, favoriteItemIds }] = await Promise.all([
+    query,
+    getFavoriteContext(),
+  ]);
+
   const items = (data ?? []) as unknown as ItemCardData[];
 
   if (error || items.length === 0) {
@@ -118,7 +137,6 @@ export async function ItemList({
     );
   }
 
-  const { userId, favoriteItemIds } = await getFavoriteContext();
   const favSet = new Set(favoriteItemIds);
 
   return (
