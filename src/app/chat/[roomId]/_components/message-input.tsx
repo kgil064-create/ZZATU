@@ -3,7 +3,7 @@
 import { useRef, useState, type SyntheticEvent } from "react";
 
 import { sendMessage } from "@/app/actions/chat";
-import { uploadChatImage } from "@/lib/chat";
+import { uploadChatImage } from "@/lib/storage";
 
 /**
  * 메시지 입력창 — 텍스트 + 사진. (Phase 5 · 5-B)

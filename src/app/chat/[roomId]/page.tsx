@@ -13,6 +13,7 @@ import {
   type ChatMessage,
 } from "./_components/message-thread";
 import { MessageInput } from "./_components/message-input";
+import { RoomReadMarker } from "./_components/read-marker";
 
 export default async function ChatRoomPage({
   params,
@@ -52,6 +53,9 @@ export default async function ChatRoomPage({
           {typedRoom.items?.title ?? "자재"}
         </Link>
       </div>
+
+      {/* UI 없음 — 마운트 시 + 상대 메시지 수신 시 읽음 처리 */}
+      <RoomReadMarker roomId={roomId} myId={user.id} />
 
       <MessageThread
         roomId={roomId}

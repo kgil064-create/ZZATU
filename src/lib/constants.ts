@@ -55,6 +55,17 @@ export const ITEM_TYPE_COLORS: Record<
 /** 거래완료 배지 색. */
 export const SOLD_BADGE_STYLE = { bg: "#F1EFE8", text: "#5F5E5A" };
 
+/**
+ * 채팅 미확인 배지 색.
+ *
+ * 알림 성격이라 브랜드 청록(primary)도, 거래유형 팔레트(ITEM_TYPE_COLORS)도 쓰지
+ * 않는다. 둘 중 어느 쪽을 재사용하면 "상태 표시"로 읽혀 눈에 걸리지 않는다.
+ */
+export const UNREAD_BADGE_STYLE = { bg: "#DC2626", text: "#FFFFFF" };
+
+/** 미확인 배지에 숫자를 그대로 쓰는 상한. 초과하면 "99+". */
+export const UNREAD_BADGE_MAX = 99;
+
 /** 상세 페이지 지표 노출 문턱(미달이면 해당 영역 자체를 렌더하지 않음). */
 export const VIEW_COUNT_THRESHOLD = 20;
 export const FAVORITE_COUNT_THRESHOLD = 1;

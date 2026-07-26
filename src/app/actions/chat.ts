@@ -135,3 +135,21 @@ export async function sendMessage(
 
   return { success: true };
 }
+
+/**
+ * 이 방을 "지금까지 읽음"으로 표시한다. (Phase 5 · 미확인 표시)
+ *
+ * mark_room_read RPC 는 auth.uid() 가 방 참여자일 때만 자기 쪽 컬럼을 갱신하고,
+ * 참여자가 아니면 아무 일도 하지 않는다(서버측 검증이라 roomId 를 믿어도 된다).
+ *
+ * fire-and-forget: 실패해도 채팅 동작을 막지 않으므로 throw 하지 않고 로그만 남긴다.
+ * ⚠️ supabase-js 는 RPC 오류에 throw 하지 않고 { error } 를 돌려준다 —
+ *    try/catch 로는 못 잡으므로 error 를 직접 확인한다.
+ */
+export async function markRoomRead(roomId: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mark_room_read", { p_room_id: roomId });
+  if (error) {
+    console.error("[markRoomRead] 읽음 처리 실패:", error.message);
+  }
+}

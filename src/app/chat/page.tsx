@@ -6,42 +6,15 @@
 import Link from "next/link";
 
 import { requireUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { getRoomsWithUnread } from "@/lib/chat";
 import { formatRelativeTime } from "@/lib/format";
-
-interface ChatListRoom {
-  id: string;
-  buyer_id: string;
-  seller_id: string;
-  last_message_at: string | null;
-  buyer: { nickname: string } | null;
-  seller: { nickname: string } | null;
-  items: {
-    title: string;
-    item_images: { url: string; display_order: number }[];
-  } | null;
-  chat_messages: {
-    content: string | null;
-    image_url: string | null;
-    sent_at: string;
-  }[];
-}
+import { UnreadBadge } from "@/components/unread-badge";
 
 export default async function ChatListPage() {
   const user = await requireUser("/chat");
-  const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("chat_rooms")
-    .select(
-      "id, buyer_id, seller_id, last_message_at, buyer:profiles!buyer_id(nickname), seller:profiles!seller_id(nickname), items(title, item_images(url, display_order)), chat_messages(content, image_url, sent_at)",
-    )
-    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-    .order("last_message_at", { ascending: false, nullsFirst: false })
-    .order("sent_at", { referencedTable: "chat_messages", ascending: false })
-    .limit(1, { referencedTable: "chat_messages" });
-
-  const rooms = (data ?? []) as unknown as ChatListRoom[];
+  // 정렬은 last_message_at 최신순 그대로(미확인 우선 정렬 아님).
+  const rooms = await getRoomsWithUnread(user.id);
 
   return (
     <main className="mx-auto w-full max-w-screen-md px-4 py-4">
@@ -63,6 +36,7 @@ export default async function ChatListPage() {
             const preview = last
               ? (last.content ?? (last.image_url ? "사진" : ""))
               : "";
+            const hasUnread = room.unreadCount > 0;
 
             return (
               <li key={room.id}>
@@ -94,9 +68,20 @@ export default async function ChatListPage() {
                     <span className="truncate text-xs text-muted-foreground">
                       {room.items?.title ?? "자재"}
                     </span>
-                    <span className="truncate text-sm text-muted-foreground">
-                      {preview}
-                    </span>
+                    {/* 미확인이 있으면 마지막 메시지를 굵게 + 본문색으로 올린다. */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={
+                          "truncate text-sm " +
+                          (hasUnread
+                            ? "font-semibold text-foreground"
+                            : "text-muted-foreground")
+                        }
+                      >
+                        {preview}
+                      </span>
+                      <UnreadBadge count={room.unreadCount} className="shrink-0" />
+                    </div>
                   </div>
                 </Link>
               </li>

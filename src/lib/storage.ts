@@ -1,14 +1,19 @@
 /**
- * Supabase Storage 헬퍼.
+ * Supabase Storage 헬퍼. (브라우저 전용 — 클라이언트 컴포넌트에서 직접 호출)
  *
  * 자재 사진은 폼(client component)에서 직접 업로드하므로 브라우저 클라이언트를
  * 쓴다. 버킷 `item-images` 는 Public 으로 설정돼 있어 getPublicUrl 로 바로
  * 접근 가능한 URL 을 얻는다.
+ *
+ * 채팅 이미지 업로드(uploadChatImage)도 여기 있다 — 원래 lib/chat.ts 에 있었지만,
+ * chat.ts 가 서버 전용(next/headers) 조회 모듈이 되면서 브라우저에서 import 할 수
+ * 없게 돼 같은 성격의 업로드 헬퍼끼리 모았다.
  */
 import { compressImage, extensionForMime } from "@/lib/image-compress";
 import { createClient } from "@/lib/supabase/client";
 
 const BUCKET = "item-images";
+const CHAT_BUCKET = "chat-images";
 
 /**
  * 사진 1장을 Storage 에 올리고 public URL 을 돌려준다.
@@ -64,4 +69,31 @@ export async function deleteStoragePhoto(publicUrl: string): Promise<void> {
   const match = publicUrl.match(/item-images\/(.+)$/);
   if (!match) return;
   await supabase.storage.from(BUCKET).remove([match[1]]);
+}
+
+/**
+ * 채팅 이미지를 chat-images(Private)에 업로드하고 **경로(object key)** 를 반환한다.
+ *
+ * ⚠️ 경로는 반드시 `{userId}/{roomId}/{파일명}` (3단). chat-images 읽기 정책이 경로의
+ * 2번째 폴더 = room_id 로 참여자를 검증하기 때문(item-images 의 2단 규칙과 다름).
+ * Private 버킷이라 public URL 은 안 되고, 표시 시 createSignedUrl 로 서명 URL 을 만든다.
+ */
+export async function uploadChatImage(
+  file: File,
+  userId: string,
+  roomId: string,
+): Promise<string> {
+  const supabase = createClient();
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/${roomId}/${Date.now()}-${crypto
+    .randomUUID()
+    .slice(0, 6)}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from(CHAT_BUCKET)
+    .upload(path, file, { upsert: false });
+  if (error) {
+    throw new Error(`사진 업로드 실패: ${error.message}`);
+  }
+  return path;
 }

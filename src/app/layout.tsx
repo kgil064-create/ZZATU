@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { SiteHeader, SiteHeaderSkeleton } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { FloatingChatButton } from "@/components/floating-chat-button";
+import { FloatingChatButtonSlot } from "@/components/floating-chat-button-slot";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://zzatu.vercel.app"),
@@ -49,7 +49,7 @@ export default function RootLayout({
         </Suspense>
         {children}
         <SiteFooter />
-        <FloatingChatButton />
+        <FloatingChatButtonSlot />
       </body>
     </html>
   );
