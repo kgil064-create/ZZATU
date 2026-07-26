@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
+import { isTradeType } from "@/lib/constants";
 import type { TradeType } from "@/lib/format";
 import { FloatingCreateButton } from "@/components/floating-create-button";
 import { InstallBanner } from "@/components/install-banner";
@@ -16,11 +17,9 @@ export default async function Home({
 }) {
   const sp = await searchParams;
 
-  const rawType = typeof sp.type === "string" ? sp.type : undefined;
-  const type: TradeType | undefined =
-    rawType === "sell" || rawType === "free" || rawType === "request"
-      ? rawType
-      : undefined;
+  // 유형 화이트리스트는 constants 의 isTradeType 단일 소스를 쓴다 — 등록 페이지도
+  // 같은 가드로 ?type= 을 검증하므로 두 곳의 판정이 어긋나지 않는다.
+  const type: TradeType | undefined = isTradeType(sp.type) ? sp.type : undefined;
 
   const q = typeof sp.q === "string" ? sp.q : undefined;
 
@@ -91,8 +90,9 @@ export default async function Home({
         </Suspense>
       </div>
 
-      {/* 메인 목록에서만 노출되는 자재 등록 FAB */}
-      <FloatingCreateButton />
+      {/* 메인 목록에서만 노출되는 자재 등록 FAB.
+          현재 탭을 넘겨 등록 폼의 거래유형 기본값으로 잇는다("전체" 탭이면 undefined). */}
+      <FloatingCreateButton type={type} />
     </main>
   );
 }

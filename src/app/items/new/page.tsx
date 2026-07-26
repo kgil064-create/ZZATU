@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { isTradeType } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
 import {
@@ -8,8 +9,21 @@ import {
   type TransportOption,
 } from "./new-item-form";
 
-export default async function NewItemPage() {
-  await requireUser("/items/new");
+export default async function NewItemPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+
+  // 목록 탭에서 넘어온 거래유형 기본값. 화이트리스트를 통과한 값만 쓰고,
+  // 그 외(?type=xxx, 배열, 없음)는 undefined → 폼이 자체 기본값을 유지한다.
+  const defaultType = isTradeType(sp.type) ? sp.type : undefined;
+
+  // 로그인 후 원래 자리로 되돌아올 때 유형이 날아가지 않도록 쿼리를 붙여 넘긴다.
+  await requireUser(
+    defaultType ? `/items/new?type=${defaultType}` : "/items/new",
+  );
 
   const supabase = await createClient();
   const [categoriesResult, regionsResult, transportResult] = await Promise.all([
@@ -45,6 +59,7 @@ export default async function NewItemPage() {
           categories={categories}
           regions={regions}
           transportOptions={transportOptions}
+          defaultType={defaultType}
         />
       </div>
     </main>

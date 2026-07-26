@@ -1,16 +1,21 @@
 import Link from "next/link";
 
+import type { TradeType } from "@/lib/format";
+
 /**
  * 우측 하단 플로팅 자재 등록 버튼(FAB).
  *
  * 메인 목록(/)에서만 노출한다 — 홈 페이지(app/page.tsx)에서만 렌더되므로 별도 경로 분기가
  * 필요 없다(검색 결과 /?q=... 도 pathname 이 / 라 그대로 노출). 비로그인도 그대로 이동시키고,
  * /items/new 의 requireUser 가 인증을 처리한다. + 아이콘은 인라인 SVG.
+ *
+ * type: 현재 선택된 거래유형 탭. 넘기면 등록 폼의 거래유형 기본값으로 이어진다.
+ * "전체" 탭이면 undefined 가 오고, 이때는 쿼리를 붙이지 않아 폼이 자체 기본값을 쓴다.
  */
-export function FloatingCreateButton() {
+export function FloatingCreateButton({ type }: { type?: TradeType }) {
   return (
     <Link
-      href="/items/new"
+      href={type ? `/items/new?type=${type}` : "/items/new"}
       aria-label="자재 등록"
       title="자재 등록"
       className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary-hover"

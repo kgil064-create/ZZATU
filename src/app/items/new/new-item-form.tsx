@@ -9,6 +9,7 @@
 
 import { useRouter } from "next/navigation";
 
+import type { TradeType } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { uploadItemPhoto, deleteStoragePhoto } from "@/lib/storage";
 import { createItem } from "@/app/actions/items";
@@ -26,12 +27,15 @@ export type NewItemFormProps = {
   categories: Category[];
   regions: Region[];
   transportOptions: TransportOption[];
+  /** 목록 탭에서 넘어온 거래유형 기본값. 검증은 page.tsx 에서 끝난 상태. */
+  defaultType?: TradeType;
 };
 
 export function NewItemForm({
   categories,
   regions,
   transportOptions,
+  defaultType,
 }: NewItemFormProps) {
   const router = useRouter();
 
@@ -40,6 +44,14 @@ export function NewItemForm({
       categories={categories}
       regions={regions}
       transportOptions={transportOptions}
+      // ItemForm 이 useState 초기화 인자로만 읽는다 — 이후 사용자가 유형을 바꿔도
+      // 여기서 되돌리지 않는다(effect 로 덮어쓰지 않음).
+      // 구해요는 selectType 과 동일하게 "가격 협의"를 기본 선택으로 맞춘다.
+      initialValues={
+        defaultType
+          ? { type: defaultType, priceNegotiable: defaultType === "request" }
+          : undefined
+      }
       submitLabel="등록"
       onSubmit={async ({ data, photos, setPhase }) => {
         setPhase("uploading");

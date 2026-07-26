@@ -13,6 +13,26 @@ export const ITEM_TYPE_LABELS: Record<TradeType, string> = {
   request: "구해요",
 };
 
+/**
+ * 거래유형 값 화이트리스트.
+ *
+ * 문자열을 새로 적지 않고 ITEM_TYPE_LABELS 의 키에서 파생시킨다 — 유형이 늘거나
+ * 이름이 바뀌면 이 목록도 자동으로 따라간다(단일 소스).
+ */
+export const TRADE_TYPES = Object.keys(ITEM_TYPE_LABELS) as TradeType[];
+
+/**
+ * 임의 값이 거래유형인지 판정하는 타입 가드.
+ *
+ * URL 쿼리처럼 **외부에서 들어온 값**을 상태 초기값으로 쓰기 전에 통과시킨다.
+ * (`?type=<아무거나>` 로 폼이 깨지지 않게 하는 게 목적)
+ */
+export function isTradeType(value: unknown): value is TradeType {
+  return (
+    typeof value === "string" && (TRADE_TYPES as string[]).includes(value)
+  );
+}
+
 /** 거래완료 라벨(is_sold=true 일 때 거래유형과 무관하게 사용). */
 export const SOLD_LABEL = "거래완료";
 
