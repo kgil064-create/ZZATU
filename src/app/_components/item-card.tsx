@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { StatusBadge } from "@/components/status-badge";
@@ -96,8 +97,15 @@ export function ItemCard({
       >
         <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-base bg-muted">
           {thumb ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumb} alt="" className="h-full w-full object-cover" />
+            <Image
+              src={thumb}
+              alt=""
+              width={96}
+              height={96}
+              sizes="96px"
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
               사진 없음

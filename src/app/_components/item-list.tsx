@@ -110,7 +110,14 @@ export async function ItemList({
       "id, user_id, type, title, price, price_option, is_sold, created_at, regions(eupmyeondong), item_images(url, display_order)",
     )
     .order("is_sold", { ascending: true })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    // 카드는 대표 사진 1장만 쓴다 — 임베드에 정렬+limit 을 걸어 나머지 최대 9장을
+    // 아예 실어 오지 않는다. (정렬을 함께 걸어야 "display_order 가 가장 앞선 1장"이
+    // 보장된다. limit 만 걸면 어느 행이 올지 정해지지 않는다.)
+    .order("display_order", { referencedTable: "item_images", ascending: true })
+    .limit(1, { referencedTable: "item_images" })
+    // TODO: 매물 30건 초과 시 페이지네이션 필요
+    .limit(30);
 
   if (type) query = query.eq("type", type);
   if (safeQ) {

@@ -27,7 +27,9 @@ interface PhotoUploaderProps {
   error?: string; // 외부에서 에러 메시지 주입 (옵션)
 }
 
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+// 업로드 직전에 compressImage 로 줄이므로(긴 변 1600px / webp) 이 값은 최종 용량
+// 상한이 아니다. canvas 디코딩 자체의 메모리 부담을 막는 입력 상한으로 남겨둔다.
+const MAX_BYTES = 20 * 1024 * 1024; // 20MB
 
 function previewSrc(photo: GalleryPhoto): string {
   return photo.kind === "existing" ? photo.url : photo.previewUrl;
@@ -89,7 +91,7 @@ export function PhotoUploader({
         continue;
       }
       if (file.size > MAX_BYTES) {
-        messages.push(`${file.name} — 파일이 너무 커요 (5MB 초과)`);
+        messages.push(`${file.name} — 파일이 너무 커요 (20MB 초과)`);
         continue;
       }
       accepted.push({
@@ -174,7 +176,7 @@ export function PhotoUploader({
         >
           <CameraIcon />
           <span className="text-xs text-muted-foreground">
-            최대 {maxPhotos}장, 5MB 이하
+            최대 {maxPhotos}장, 20MB 이하
           </span>
           <div className="flex gap-2">
             <button

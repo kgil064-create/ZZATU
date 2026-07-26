@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 
 /**
@@ -30,10 +31,20 @@ export function PhotoGallery({ images }: { images: string[] }) {
         {images.map((url, i) => (
           <div
             key={i}
-            className="aspect-square w-full shrink-0 snap-center bg-muted"
+            className="relative aspect-square w-full shrink-0 snap-center bg-muted"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="h-full w-full object-cover" />
+            {/* 슬라이드 폭이 뷰포트에 따라 변하므로 fill + sizes.
+                상세 본문은 max-w-screen-md(768px) + px-4 라 상한이 736px.
+                첫 장은 이 화면의 LCP 요소 — 기본값(lazy)이면 LCP 가 늦어지므로
+                eager 로 올린다. (Next 16 에서 priority 는 deprecated) */}
+            <Image
+              src={url}
+              alt=""
+              fill
+              sizes="(max-width: 768px) calc(100vw - 2rem), 736px"
+              loading={i === 0 ? "eager" : "lazy"}
+              className="object-cover"
+            />
           </div>
         ))}
       </div>
