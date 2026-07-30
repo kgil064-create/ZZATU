@@ -99,9 +99,21 @@ export function InstallBanner() {
         icon={<Smartphone size={18} aria-hidden="true" />}
         title="짜투를 홈 화면에 추가"
         onDismiss={dismiss}
+        action={
+          // 안드로이드 인텐트 스킴 — 크롬으로 현재 사이트를 다시 연다. 크롬 미설치 시
+          // S.browser_fallback_url 로 기본 브라우저 폴백. 인텐트는 <a href> 로만 동작하며
+          // next/link 로 감싸면 안 된다(순수 앵커 유지).
+          <a
+            href="intent://zzatu.vercel.app/#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Fzzatu.vercel.app%2F;end"
+            className="shrink-0 rounded-lg bg-[#0E7C8C] px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+          >
+            크롬으로 열기
+          </a>
+        }
       >
         <p className="mt-0.5 text-xs text-[#0F6E56]">
-          크롬으로 열어서 추가해주세요. 삼성 인터넷에서는 설치 경고가 표시됩니다.
+          삼성 인터넷에서는 설치가 제한됩니다. 크롬으로 열면 홈 화면에 추가할 수
+          있어요.
         </p>
       </Shell>
     );
