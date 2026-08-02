@@ -53,6 +53,8 @@ export function NewItemForm({
           : undefined
       }
       submitLabel="등록"
+      // 등록 폼 전용 임시저장(텍스트/선택만, 사진 제외).
+      draftKey="draft:new-item"
       onSubmit={async ({ data, photos, setPhase }) => {
         setPhase("uploading");
         const supabase = createClient();

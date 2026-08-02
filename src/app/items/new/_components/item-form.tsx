@@ -10,12 +10,19 @@
  * 상태는 React Hook Form 대신 useState(설계서 4번 메모 유지). 폼이 더 커지면 RHF 재검토.
  */
 
-import { useRef, useState, type SyntheticEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type SyntheticEvent,
+} from "react";
 
 import type { ItemInput } from "@/lib/validations/item";
 import { itemSchema } from "@/lib/validations/item";
 import type { TradeType } from "@/lib/format";
 import { ITEM_TYPE_LABELS } from "@/lib/constants";
+import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { CategoryPicker, type Category } from "./category-picker";
 import { DeliveryPicker, type DeliveryOption } from "./delivery-picker";
 import {
@@ -109,6 +116,16 @@ export interface ItemFormProps {
   transportOptions: TransportOption[];
   initialValues?: Partial<ItemFormValues>;
   submitLabel: string; // "등록" | "수정"
+  /**
+   * 지정 시 텍스트/선택 값을 이 키로 localStorage 에 자동저장·복원한다(등록 폼 전용).
+   * 사진은 저장하지 않는다(로컬 파일 base64 라 용량 초과). 미지정(수정 폼)이면 자동저장 없음.
+   *
+   * localStorage 를 쓰는 이유: QR 로 /items/new 직접 진입 시 스와이프-백이 PWA 인스턴스를
+   * 종료시켜도(sessionStorage 는 소실) 앱을 다시 켜면 복원되도록 하기 위함이다.
+   * ⚠️ 트레이드오프: 여러 탭에서 동시에 새 글을 쓰면 draft 가 서로 덮어써 혼선될 수 있으나,
+   *    초기 사용자 규모에선 무시한다.
+   */
+  draftKey?: string;
   /** 검증 통과 후 호출. 실패 시 { error } 반환(표시), 성공 시 직접 화면 이동. */
   onSubmit: (args: ItemFormSubmitArgs) => Promise<{ error?: string } | void>;
 }
@@ -119,6 +136,7 @@ export function ItemForm({
   transportOptions,
   initialValues,
   submitLabel,
+  draftKey,
   onSubmit,
 }: ItemFormProps) {
   const [type, setType] = useState<TradeType>(initialValues?.type ?? "sell");
@@ -159,6 +177,146 @@ export function ItemForm({
     "idle" | "uploading" | "saving"
   >("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false); // 정상 제출 성공 → 가드 해제용
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
+
+  // ---- 이탈 방지(A-1) + 임시저장(A-2) ----
+  // 텍스트/선택 값 묶음(사진 제외). 자동저장·더티 판정 공용.
+  const draftFields = {
+    type,
+    title,
+    itemName,
+    spec,
+    quantity,
+    unit,
+    categoryIds,
+    price,
+    priceNegotiable,
+    description,
+    regionId,
+    regionMemo,
+    transports,
+    deliveryOption,
+    phone,
+  };
+  // 마운트 시점 초기값 스냅샷(사진은 개수만). 이후 렌더에서 비교해 더티 판정.
+  const initialDirtyJson = useMemo(
+    () =>
+      JSON.stringify({
+        type: initialValues?.type ?? "sell",
+        title: initialValues?.title ?? "",
+        itemName: initialValues?.itemName ?? "",
+        spec: initialValues?.spec ?? "",
+        quantity: initialValues?.quantity ?? "",
+        unit: initialValues?.unit ?? "",
+        categoryIds: initialValues?.categoryIds ?? [],
+        price: initialValues?.price ?? "",
+        priceNegotiable: initialValues?.priceNegotiable ?? false,
+        description: initialValues?.description ?? "",
+        regionId: initialValues?.regionId ?? null,
+        regionMemo: initialValues?.regionMemo ?? "",
+        transports: initialValues?.transports ?? [],
+        deliveryOption: initialValues?.deliveryOption ?? null,
+        phone: initialValues?.phone ?? "",
+        photoCount: initialValues?.photos?.length ?? 0,
+      }),
+    // 마운트 1회 고정.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const currentDirtyJson = JSON.stringify({
+    ...draftFields,
+    photoCount: photos.length,
+  });
+  const isDirty = currentDirtyJson !== initialDirtyJson;
+
+  // 작성 중(더티) + 제출 중 아님 + 정상 제출 전 → 이탈 가드 활성.
+  useUnsavedGuard(isDirty && submitPhase === "idle" && !submitted);
+
+  // 복원: 마운트 시 draftKey 저장분이 있으면 필드에 적용(사진 제외). 등록 폼 전용.
+  const draftReadyRef = useRef(false);
+  useEffect(() => {
+    if (!draftKey) {
+      draftReadyRef.current = true;
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const d = JSON.parse(raw) as Partial<typeof draftFields>;
+        /* eslint-disable react-hooks/set-state-in-effect -- 마운트 시 저장된 초안 복원(의도된 setState) */
+        if (d.type) setType(d.type);
+        if (typeof d.title === "string") setTitle(d.title);
+        if (typeof d.itemName === "string") setItemName(d.itemName);
+        if (typeof d.spec === "string") setSpec(d.spec);
+        if (d.quantity === "" || typeof d.quantity === "number")
+          setQuantity(d.quantity);
+        if (typeof d.unit === "string") setUnit(d.unit);
+        if (Array.isArray(d.categoryIds)) setCategoryIds(d.categoryIds);
+        if (d.price === "" || typeof d.price === "number") setPrice(d.price);
+        if (typeof d.priceNegotiable === "boolean")
+          setPriceNegotiable(d.priceNegotiable);
+        if (typeof d.description === "string") setDescription(d.description);
+        if (d.regionId === null || typeof d.regionId === "number")
+          setRegionId(d.regionId);
+        if (typeof d.regionMemo === "string") setRegionMemo(d.regionMemo);
+        if (Array.isArray(d.transports)) setTransports(d.transports);
+        if (d.deliveryOption === null || typeof d.deliveryOption === "string")
+          setDeliveryOption(d.deliveryOption ?? null);
+        if (typeof d.phone === "string") setPhone(d.phone);
+        setRestoredFromDraft(true);
+        /* eslint-enable react-hooks/set-state-in-effect */
+      }
+    } catch {
+      // localStorage 접근 불가(용량/프라이빗 모드 등) — 무시
+    }
+    draftReadyRef.current = true;
+  }, [draftKey]);
+
+  // 자동저장: 더티일 때만 저장(복원 완료 후). 초기값과 같아지면 삭제. 제출 성공 후엔 저장 안 함.
+  useEffect(() => {
+    if (!draftKey || !draftReadyRef.current || submitted) return;
+    try {
+      if (isDirty) {
+        localStorage.setItem(draftKey, JSON.stringify(draftFields));
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    } catch {
+      // 무시(기능은 정상 진행)
+    }
+    // draftFields 는 currentDirtyJson 이 대표한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey, currentDirtyJson, isDirty, submitted]);
+
+  /** "새로 작성" — 모든 필드를 폼 기본값으로 되돌리고 draft 삭제. */
+  function resetDraft() {
+    setType(initialValues?.type ?? "sell");
+    setPhotos(initialValues?.photos ?? []);
+    setTitle("");
+    setItemName("");
+    setSpec("");
+    setQuantity("");
+    setUnit("");
+    setCategoryIds([]);
+    setPrice("");
+    setPriceNegotiable(initialValues?.priceNegotiable ?? false);
+    setDescription("");
+    setRegionId(null);
+    setRegionMemo("");
+    setTransports([]);
+    setDeliveryOption(null);
+    setPhone("");
+    setErrors({});
+    setRestoredFromDraft(false);
+    if (draftKey) {
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {
+        // 무시
+      }
+    }
+  }
 
   // 커스텀 UI 섹션 스크롤 타깃 ref + 제출 실패 시 잠시 강조할 섹션 키.
   const categorySectionRef = useRef<HTMLElement>(null);
@@ -335,6 +493,16 @@ export function ItemForm({
       if (res && res.error) {
         setSubmitError(res.error);
         setSubmitPhase("idle");
+      } else {
+        // 정상 제출 성공 → 이탈 가드 해제 + draft 삭제(다음 등록에 옛 내용 안 뜨게).
+        setSubmitted(true);
+        if (draftKey) {
+          try {
+            localStorage.removeItem(draftKey);
+          } catch {
+            // 무시
+          }
+        }
       }
     } catch (err) {
       setSubmitError(
@@ -348,6 +516,21 @@ export function ItemForm({
 
   return (
     <form onSubmit={validateAndSubmit} className="space-y-8">
+      {restoredFromDraft && (
+        <div className="flex items-start justify-between gap-2 rounded-lg border border-[#0E7C8C]/30 bg-[#E1F5EE] p-3 text-sm text-[#04342C]">
+          <p>
+            작성 중이던 내용을 불러왔어요.{" "}
+            <span className="text-[#0F6E56]">사진은 다시 첨부해주세요.</span>
+          </p>
+          <button
+            type="button"
+            onClick={resetDraft}
+            className="shrink-0 rounded-md border border-[#0E7C8C]/40 bg-white px-2 py-1 text-xs font-medium text-[#0E7C8C]"
+          >
+            새로 작성
+          </button>
+        </div>
+      )}
       {Object.keys(errors).length > 0 && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           입력하지 않은 필수 항목이 {Object.keys(errors).length}개 있어요
