@@ -74,3 +74,15 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* iOS Safari 는 font-size < 16px 인 입력창을 탭하면 화면을 확대하고 안 되돌린다.
+ * 터치 기기에서만 폼 컨트롤을 16px 로 강제해 확대를 막는다(데스크톱 시각은 유지).
+ * Tailwind 유틸(text-sm 등)을 이기려면 !important 가 필요하다.
+ * ⚠️ viewport 의 maximum-scale=1 은 접근성을 해쳐 쓰지 않는다. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
