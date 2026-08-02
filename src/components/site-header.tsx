@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { getProfile } from "@/lib/auth";
 import { SignOutButton } from "@/components/sign-out-button";
+import { HeaderBackButton } from "@/components/header-back-button";
 
 /**
  * SiteHeader 의 Suspense fallback.
@@ -16,17 +17,20 @@ export function SiteHeaderSkeleton() {
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-14 max-w-screen-md items-center justify-between px-4">
-        <Link href="/" className="flex items-baseline gap-2">
-          <span className="text-xl font-bold tracking-tight text-primary">
-            ZZATU
-          </span>
-          <span className="hidden text-xs text-muted-foreground sm:inline">
-            자재의 가치를 잇다
-          </span>
-        </Link>
-        <div className="flex items-center gap-3" aria-hidden="true">
+        <div className="flex items-center gap-1">
+          <HeaderBackButton />
+          <Link href="/" className="flex items-baseline gap-2">
+            <span className="text-xl font-bold tracking-tight text-primary">
+              ZZATU
+            </span>
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              자재의 가치를 잇다
+            </span>
+          </Link>
+        </div>
+        <div className="flex items-center gap-2" aria-hidden="true">
           <div className="h-4 w-16 animate-pulse rounded-md bg-border" />
-          <div className="h-[22px] w-[22px] animate-pulse rounded-full bg-border" />
+          <div className="h-6 w-6 animate-pulse rounded-full bg-border" />
         </div>
       </div>
     </header>
@@ -46,29 +50,32 @@ export async function SiteHeader() {
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-14 max-w-screen-md items-center justify-between px-4">
-        <Link href="/" className="flex items-baseline gap-2">
-          <span className="text-xl font-bold tracking-tight text-primary">
-            ZZATU
-          </span>
-          <span className="hidden text-xs text-muted-foreground sm:inline">
-            자재의 가치를 잇다
-          </span>
-        </Link>
-        <nav className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
+          <HeaderBackButton />
+          <Link href="/" className="flex items-baseline gap-2">
+            <span className="text-xl font-bold tracking-tight text-primary">
+              ZZATU
+            </span>
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              자재의 가치를 잇다
+            </span>
+          </Link>
+        </div>
+        <nav className="flex items-center gap-1">
           {profile ? (
             <>
-              <span className="max-w-[120px] truncate text-sm text-foreground">
+              <span className="mr-1 max-w-[120px] truncate text-sm text-foreground">
                 {profile.nickname}
               </span>
               <Link
                 href="/mypage"
                 aria-label="마이페이지"
                 title="마이페이지"
-                className="text-primary transition-colors hover:text-primary-hover"
+                className="-mr-1 flex h-11 w-11 items-center justify-center text-primary transition-colors hover:text-primary-hover"
               >
                 <svg
-                  width="22"
-                  height="22"
+                  width="24"
+                  height="24"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
